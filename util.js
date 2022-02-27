@@ -1,5 +1,10 @@
+let debug = true
 
+//TODO: Redo attempt functions as User-[:Attempt]-Sentence, with intervals and due dates.  
+//  * Make one :AttemptType, cypher query that generates data for the back of a card...
+//  * Attempt all existing sentences
 //TODO: TTS audio solution (Chinese and russian)
+
 //TODO: js indentation plugin
 //TODO: Add more sentences.  Taxonomy.  
 //TODO: Start building UI (other package?)
@@ -15,6 +20,8 @@ const driver = neo4j.driver(env.uri, neo4j.auth.basic(env.uname, env.pword))
 //await driver.close()
 
 async function runQuery(s, d){
+
+if(debug) console.log(s)
 
 const session = driver.session()
 const sentenceData = s
@@ -32,6 +39,99 @@ try {
 }
 
 // on application exit:
+}
+
+class Edge{
+  constructor(id,properties){
+    this.id=id
+    Object.keys(properties).map((k)=>this[k]=properties[k])
+  }
+}
+
+class Node{
+  constructor(id,properties){
+    this.id=id
+    Object.keys(properties).map((k)=>this[k]=properties[k])
+  }
+}
+
+class Attempt extends Edge{
+  async pass(){
+    return await resolve1("MATCH ()-[a:Attempt]->() WHERE id(a) = $id SET a += {status: \"PASSED\", modified_at: localdatetime(), times_right: a.times_right+1, duration: a.duration*2} RETURN a", {id: this.id})
+  }
+
+  async fail(){
+    return await resolve1("MATCH ()-[a:Attempt]->() WHERE id(a) = $id SET a += {status: \"FAILED\", modified_at: localdatetime(), times_wrong: a.times_wrong+1, duration: a.duration/2} RETURN a", {id: this.id})
+  }
+
+  async reset(){
+    return await resolve1("MATCH ()-[a:Attempt]->() WHERE id(a) = $id SET a = {status: \"NONE\", created_at: localdatetime(), modified_at: localdatetime(), times_wrong: 0, times_right: 0, duration: 10} RETURN a", {id: this.id})
+  }
+
+async flashCard(side){
+
+   let s = await resolve1( 'MATCH (u:User)-[a:Attempt]->(s:Sentence) WHERE id(a) = $attempt_id RETURN s', { attempt_id: this.id })
+   let a = await resolve1( 'MATCH (u:User)-[a:Attempt]->(s:Sentence) WHERE id(a) = $attempt_id RETURN a', { attempt_id: this.id })
+   let ats = await a.getAttemptTypes()
+
+   let target_sentences = await Promise.all(ats.map(async (at)=>{
+     return await at.getAnswerFor(s)
+   }))
+   
+   console.log(s.data)
+   for(let at of ats){
+     let target_s = await at.getAnswerFor(s)
+     if(target_s){
+       if(side == "front")
+         console.log(at.type, at.params, "______")
+       if(side == "back")
+         console.log(at.type, at.params, target_s.data)
+     }
+   }
+}
+
+  async getAttemptTypes(){
+    let atis = JSON.parse(this.attempt_type_ids)
+
+    let ret = []
+ 
+    for(let i=0;i<atis.length;i++){
+      ret.push(await resolve1("MATCH(x) WHERE id(x) = $id RETURN x",{id:atis[i]}))
+    }
+
+    return ret
+  }
+}
+
+class AttemptType extends Node{
+  async getAnswerFor(sentence){
+    if(this.cached_answer) return this.cached_answer
+    this.cached_answer = await resolve1(this.cypher, {...JSON.parse(this.params), id: sentence.id})
+
+    return this.cached_answer
+  }
+}
+
+class Sentence extends Node{}
+class Word extends Node{}
+
+async function resolve1(s,d){
+  let x = await runQuery(s,d)
+
+  if(!x.records[0]) return null
+
+  let data = x.records[0].get(0)
+
+  let Type  
+
+  if(data.type == "Attempt")  Type = Attempt
+  if(data.labels && data.labels.indexOf("Sentence")>=0) Type = Sentence
+  if(data.labels && data.labels.indexOf("Word")>=0) Type = Word
+  if(data.labels && data.labels.indexOf("AttemptType")>=0) Type = AttemptType
+
+  if(!Type) throw Error("Could not find constructor for: "+ JSON.stringify(data))
+
+  return new Type(neo4j.int(data.identity).toNumber(), data.properties || {})
 }
 
 async function translation(s,lang){
@@ -96,18 +196,35 @@ function sayZh(s){
  */
 }
 
-//TODO:   addUser(u), attempt(u, s1, s2)
-
 function addUser(username){
   return runQuery(
     'MERGE (u:User {username: $username}) RETURN u',
     { username: username}) 
 }
 
-function attempt(username,type,s1,s2){
+function addAttemptType(type, cypher, params){
   return runQuery(
-    'MATCH (u:User),(s1:Sentence),(s2:Sentence) WHERE u.username = $username AND s1.data = $s1Data AND s2.data = $s2Data MERGE (s1)-[a:Attempt {type: $type, user: id(u)}]->(s2) RETURN a',
-    { username: username, s1Data: s1, s2Data: s2, type: type}) 
+    'MERGE (at:AttemptType {type: $type, cypher: $cypher, params: $params}) RETURN at',
+    {type: type, cypher: cypher, params: JSON.stringify(params)}) 
+}
+
+function addReadingAttemptType(lang){
+  addAttemptType("Reading", "MATCH (s1:Sentence)-[t:To]->(s2:Sentence) WHERE t.through = \"gt\" AND t.output = $output AND id(s1) = $id RETURN s2", {output: lang})
+}
+
+function deleteNode(id){
+  runQuery("MATCH (x) WHERE id(x) = $id DELETE x", {id})
+}
+
+function addAttempt(username,attempt_type_ids,s1){
+  return runQuery(
+    'MATCH (u:User),(s1:Sentence) WHERE u.username = $username AND s1.data = $s1Data MERGE (u)-[a:Attempt {attempt_type_ids: $attempt_type_ids, created_at: localdatetime(), modified_at: localdatetime(), duration: 10, times_right: 0, times_wrong: 0, status: "NONE"}]->(s1) RETURN a',
+    { username: username, s1Data: s1, attempt_type_ids: JSON.stringify(attempt_type_ids)}) 
+}
+
+
+async function getAttempt(attempt_id){
+   return await resolve1( 'MATCH (u:User)-[a:Attempt]->(s:Sentence) WHERE id(a) = $attempt_id RETURN a', { attempt_id })
 }
 
 function userAttempts(username, type){
@@ -143,10 +260,18 @@ module.exports = {
   sayEn,
   sayZh,
   addUser,
-  attempt,
+  addAttemptType,
+  addReadingAttemptType,
+  addAttempt,
+  getAttempt,
   userAttempts,
   unattemptedSentences,
   randomUnattemptedSentence,
+
+
+  //Low level
+  deleteNode,
+  runQuery, resolve1
 }
 
 
