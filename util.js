@@ -1,8 +1,7 @@
 let debug = false
 
-//TODO: Redo attempt functions as User-[:Attempt]-Sentence, with intervals and due dates.  
-//  * Make one :AttemptType, cypher query that generates data for the back of a card...
-//  * Attempt all existing sentences
+//TODO: 
+// * Attempt all existing sentences
 //TODO: TTS audio solution (Chinese and russian)
 
 //TODO: js indentation plugin
@@ -143,6 +142,13 @@ class User extends Node{
     return as.filter(a=>a.isDue())
   }
 
+  async getNextDueAttempt(){
+    let as =  (await this.getDueAttempts())
+
+    return as[Math.floor(Math.random()*as.length)] 
+  }
+
+
   async clearAttempts(){
     await runQuery(
       'MATCH (u:User)-[a:Attempt]->(s:Sentence) WHERE id(u) = $id DELETE a',
@@ -212,10 +218,10 @@ function addWord(w){
     { wordData: w })
 }
 
-function linkSentences(s1,s2){
+function linkSentences(s1,s2, lang){
   return runQuery(
-    'MATCH (s1:Sentence),(s2:Sentence) WHERE s1.data = $s1Data and s2.data = $s2Data MERGE (s1)-[:GT]->(s2) return s1,s2',
-    { s1Data: s1, s2Data: s2 }) }
+    'MATCH (s1:Sentence),(s2:Sentence) WHERE s1.data = $s1Data and s2.data = $s2Data MERGE (s1)-[:To {through: \"gt\", output: $lang}]->(s2) return s1,s2',
+    { s1Data: s1, s2Data: s2, lang }) }
 
 function linkWordAndSentence(w,s){
   return runQuery(
@@ -226,7 +232,7 @@ async function extendTo(s,lang){
   await addSentence(s)
   var to = await translation(s, lang)
   await addSentence(to)
-  await linkSentences(s,to)
+  await linkSentences(s,to, lang)
 }
 
 async function extendZhCn(s){
@@ -294,13 +300,73 @@ async function randomUnattemptedSentence(username, type){
   return ss[Math.floor(Math.random()*ss.length)].get(0)
 }
 
-function get(id){
-  return resolve1(
+async function get(id){
+  return await resolve1(
     'MATCH (x) WHERE id(x) = $id RETURN x',
     {id}) ||
     resolve1(
     'MATCH ()-[x]-() WHERE id(x) = $id RETURN x',
     {id}) 
+}
+
+async function setup(uid){
+  let u = await get(uid); 
+
+  let ss = await resolveMany("MATCH (s:Sentence),(u:User) WHERE NOT (u)-[:Attempt]->(s) AND id(u) = $uid RETURN s",{uid})
+
+  //TODO: Gross hardcoded attempttype ids
+  let read_zh_CN = await get(43); 
+  let read_en = await get(44); 
+  let read_ru = await get(45); 
+
+  //await u.clearAttempts(); 
+
+  for(let s of ss){
+    console.log("Found new sentence.  Will begin attempting: " + s.data)
+    await u.beginAttempting(s,  [read_zh_CN,read_en,read_ru])
+  }
+}
+
+async function study(uid){
+  await setup(uid) //Makes new :Attempts for any new sentences (without :Attempts)
+
+  let u = await get(uid)
+  let a = await u.getNextDueAttempt()
+
+  const readline = require('readline/promises').createInterface({
+    input: process.stdin,
+    output: process.stdout
+  })
+
+  while(a){
+    let as = await u.getDueAttempts()
+
+    console.log("*************")
+    console.log("Cards remaining: " + as.length)
+    await a.front()
+
+    let  _ = await readline.question("Continue? ") 
+    await a.back() 
+
+    let resp = await readline.question("Pass or Fail? ")
+    if(resp.startsWith("P")) {
+      console.log("Nice! :)")
+      a = await a.pass()
+    } else if (resp.startsWith("F")) {
+      console.log("Better luck next time :(")
+      a = await a.fail()
+    } 
+
+    if(a.isDue())
+      console.log("This will be asked again...")
+    else
+      console.log("You're done with this card for now")
+
+    a = await u.getNextDueAttempt()
+  }
+
+  //readline.close()
+  console.log("Session complete")
 }
 
 module.exports = {
@@ -320,6 +386,8 @@ module.exports = {
   unattemptedSentences,
   randomUnattemptedSentence,
 
+  //High level
+  study,
 
   //Low level
   get,
