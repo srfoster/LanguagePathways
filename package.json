@@ -1,0 +1,20 @@
+{
+  "name": "languagepaths",
+  "version": "1.0.0",
+  "description": "",
+  "main": "util.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@vitalets/google-translate-api": "^7.0.0",
+    "audiosprite": "^0.7.2",
+    "google-translate-api": "^2.3.0",
+    "neo4j-driver": "^4.4.3",
+    "open": "^8.4.0",
+    "pinyin": "^2.11.0",
+    "yanyu": "^0.1.3"
+  }
+}
