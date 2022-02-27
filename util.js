@@ -1,4 +1,4 @@
-let debug = true
+let debug = false
 
 //TODO: Redo attempt functions as User-[:Attempt]-Sentence, with intervals and due dates.  
 //  * Make one :AttemptType, cypher query that generates data for the back of a card...
@@ -14,6 +14,7 @@ let debug = true
 
 let env = require("./env.js")
 
+const dateFns = require('date-fns')
 const neo4j = require('neo4j-driver')
 const driver = neo4j.driver(env.uri, neo4j.auth.basic(env.uname, env.pword))
 //Should call...
@@ -57,19 +58,26 @@ class Node{
 
 class Attempt extends Edge{
   async pass(){
-    return await resolve1("MATCH ()-[a:Attempt]->() WHERE id(a) = $id SET a += {status: \"PASSED\", modified_at: localdatetime(), times_right: a.times_right+1, duration: a.duration*2} RETURN a", {id: this.id})
+    return await resolve1("MATCH ()-[a:Attempt]->() WHERE id(a) = $id SET a += {status: \"PASSED\", modified_at: localdatetime(), status_changed_at: localdatetime(), times_right: a.times_right+1, duration: a.duration*2} RETURN a", {id: this.id})
   }
 
   async fail(){
-    return await resolve1("MATCH ()-[a:Attempt]->() WHERE id(a) = $id SET a += {status: \"FAILED\", modified_at: localdatetime(), times_wrong: a.times_wrong+1, duration: a.duration/2} RETURN a", {id: this.id})
+    return await resolve1("MATCH ()-[a:Attempt]->() WHERE id(a) = $id SET a += {status: \"FAILED\", modified_at: localdatetime(), status_changed_at: localdatetime(), times_wrong: a.times_wrong+1, duration: a.duration/2} RETURN a", {id: this.id})
   }
 
   async reset(){
-    return await resolve1("MATCH ()-[a:Attempt]->() WHERE id(a) = $id SET a = {status: \"NONE\", created_at: localdatetime(), modified_at: localdatetime(), times_wrong: 0, times_right: 0, duration: 10} RETURN a", {id: this.id})
+    return await resolve1("MATCH ()-[a:Attempt]->() WHERE id(a) = $id SET a += {status: \"NONE\", created_at: localdatetime(), modified_at: localdatetime(), status_modified_at: localdateTime(), times_wrong: 0, times_right: 0, duration: 10} RETURN a", {id: this.id})
   }
 
-async flashCard(side){
+  async front(){
+    return await this.flashCard("front")
+  }
 
+  async back(){
+    return await this.flashCard("back")
+  }
+
+  async flashCard(side){
    let s = await resolve1( 'MATCH (u:User)-[a:Attempt]->(s:Sentence) WHERE id(a) = $attempt_id RETURN s', { attempt_id: this.id })
    let a = await resolve1( 'MATCH (u:User)-[a:Attempt]->(s:Sentence) WHERE id(a) = $attempt_id RETURN a', { attempt_id: this.id })
    let ats = await a.getAttemptTypes()
@@ -101,6 +109,15 @@ async flashCard(side){
 
     return ret
   }
+
+  dueDate(){
+    return dateFns.addMinutes(dateFns.parseISO(this.status_modified_at.toString()), this.duration)
+  }
+
+  isDue(){
+    let due_date = this.dueDate()
+    return this.status == "FAILED" || this.status == "NONE" || dateFns.isAfter(dateFns.addMinutes(new Date(),10),due_date)
+  }
 }
 
 class AttemptType extends Node{
@@ -112,8 +129,46 @@ class AttemptType extends Node{
   }
 }
 
+class User extends Node{
+  async getAttempts(){
+    return await resolveMany(
+      'match (u:User)-[a:Attempt]->(s:Sentence) where id(u) = $id return a',
+      { id: this.id}) 
+  }
+
+  //TODO: This won't scale.  Do the logic in the db
+  async getDueAttempts(){
+    let as = await this.getAttempts()
+
+    return as.filter(a=>a.isDue())
+  }
+
+  async clearAttempts(){
+    await runQuery(
+      'MATCH (u:User)-[a:Attempt]->(s:Sentence) WHERE id(u) = $id DELETE a',
+      { id: this.id}) 
+  }
+
+  async beginAttempting(s, ats){
+    let a = await resolve1(
+      'MATCH (u:User),(s:Sentence) WHERE id(u) = $id AND id(s) = $sentence_id MERGE (u)-[a:Attempt {attempt_type_ids: $attempt_type_ids}]->(s) RETURN a',
+      { id: this.id, sentence_id: s.id, attempt_type_ids: JSON.stringify(ats.map((a)=>a.id))}) 
+    a = await a.reset()
+
+    return a 
+  }
+}
+
 class Sentence extends Node{}
 class Word extends Node{}
+
+async function resolveMany(s,d){
+  let x = await runQuery(s,d)
+
+  if(!x.records[0]) return []
+
+  return x.records.map((r)=>wrap(r.get(0)))
+}
 
 async function resolve1(s,d){
   let x = await runQuery(s,d)
@@ -122,12 +177,17 @@ async function resolve1(s,d){
 
   let data = x.records[0].get(0)
 
+  return wrap(data)
+}
+
+function wrap(data){
   let Type  
 
   if(data.type == "Attempt")  Type = Attempt
   if(data.labels && data.labels.indexOf("Sentence")>=0) Type = Sentence
   if(data.labels && data.labels.indexOf("Word")>=0) Type = Word
   if(data.labels && data.labels.indexOf("AttemptType")>=0) Type = AttemptType
+  if(data.labels && data.labels.indexOf("User")>=0) Type = User
 
   if(!Type) throw Error("Could not find constructor for: "+ JSON.stringify(data))
 
@@ -202,6 +262,7 @@ function addUser(username){
     { username: username}) 
 }
 
+
 function addAttemptType(type, cypher, params){
   return runQuery(
     'MERGE (at:AttemptType {type: $type, cypher: $cypher, params: $params}) RETURN at',
@@ -216,22 +277,7 @@ function deleteNode(id){
   runQuery("MATCH (x) WHERE id(x) = $id DELETE x", {id})
 }
 
-function addAttempt(username,attempt_type_ids,s1){
-  return runQuery(
-    'MATCH (u:User),(s1:Sentence) WHERE u.username = $username AND s1.data = $s1Data MERGE (u)-[a:Attempt {attempt_type_ids: $attempt_type_ids, created_at: localdatetime(), modified_at: localdatetime(), duration: 10, times_right: 0, times_wrong: 0, status: "NONE"}]->(s1) RETURN a',
-    { username: username, s1Data: s1, attempt_type_ids: JSON.stringify(attempt_type_ids)}) 
-}
 
-
-async function getAttempt(attempt_id){
-   return await resolve1( 'MATCH (u:User)-[a:Attempt]->(s:Sentence) WHERE id(a) = $attempt_id RETURN a', { attempt_id })
-}
-
-function userAttempts(username, type){
-  return runQuery(
-    'MATCH (u:User),(s1)-[a:Attempt]->(s2) WHERE id(u) = a.user AND u.username = $username AND a.type = $type RETURN a',
-    { username: username, type: type}) 
-}
 
 //TODO: Will get large, need to add LIMIT
 function unattemptedSentences(username, type){
@@ -248,6 +294,15 @@ async function randomUnattemptedSentence(username, type){
   return ss[Math.floor(Math.random()*ss.length)].get(0)
 }
 
+function get(id){
+  return resolve1(
+    'MATCH (x) WHERE id(x) = $id RETURN x',
+    {id}) ||
+    resolve1(
+    'MATCH ()-[x]-() WHERE id(x) = $id RETURN x',
+    {id}) 
+}
+
 module.exports = {
   addSentence,
   addWord,
@@ -262,14 +317,12 @@ module.exports = {
   addUser,
   addAttemptType,
   addReadingAttemptType,
-  addAttempt,
-  getAttempt,
-  userAttempts,
   unattemptedSentences,
   randomUnattemptedSentence,
 
 
   //Low level
+  get,
   deleteNode,
   runQuery, resolve1
 }
