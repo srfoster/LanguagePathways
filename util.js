@@ -1,8 +1,7 @@
 
-//TODO: Factor out pword
-//TODO: First commit
 //TODO: TTS audio solution (Chinese and russian)
 //TODO: js indentation plugin
+//TODO: Add more sentences.  Start building UI (other package?)
 
 let env = require("./env.js")
 
