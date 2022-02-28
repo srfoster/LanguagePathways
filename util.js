@@ -81,8 +81,9 @@ class Attempt extends Edge{
      if(target_s){
        if(side == "front")
          console.log(at.type, at.params, "______")
-       if(side == "back")
-         console.log(at.type, at.params, target_s.data)
+       if(side == "back"){
+         console.log(at.type, at.params, target_s.data, await target_s.describe())
+       }
      }
    }
 }
@@ -172,7 +173,23 @@ class User extends Node{
   }
 }
 
-class Sentence extends Node{}
+class Sentence extends Node{
+  async describe(){
+    let en = await this.translation("en")
+    let zh = await this.translation("zh-CN")
+    let ru = await this.translation("ru")
+
+    return({
+      en: en.text,
+      zh: `${zh.text} (${zh.pronunciation})`,
+      ru: `${ru.text} (${ru.pronunciation})`,
+    })
+  }
+
+  async translation(lang){
+    return await translation(this.data, lang)
+  }
+}
 class Word extends Node{}
 
 async function resolveMany(s,d){
@@ -210,7 +227,7 @@ function wrap(data){
 async function translation(s,lang){
   let translate = require('@vitalets/google-translate-api');
  
-  return (await translate(s, {to: lang})).text
+  return (await translate(s, {to: lang}))
 }
 
 function addSentence(s){
@@ -237,7 +254,7 @@ function linkWordAndSentence(w,s){
 
 async function extendTo(s,lang){
   await addSentence(s)
-  var to = await translation(s, lang)
+  var to = (await translation(s, lang)).text
   await addSentence(to)
   await linkSentences(s,to, lang)
 }
