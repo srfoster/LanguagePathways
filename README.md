@@ -1,5 +1,7 @@
 
 
+//TESTS
+
 //TODO: More sentences
 //  Deal with capitalization idiosyncrasies
     ni ai wo -> "you love Me"

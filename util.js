@@ -75,7 +75,7 @@ class Attempt extends Edge{
      return await at.getAnswerFor(s)
    }))
    
-   console.log(s.data)
+   console.log(a.id + "   " + s.data)
    for(let at of ats){
      let target_s = await at.getAnswerFor(s)
      if(target_s){
@@ -100,12 +100,23 @@ class Attempt extends Edge{
   }
 
   dueDate(){
-    return dateFns.addMinutes(dateFns.parseISO(this.status_modified_at.toString()), this.duration)
+    return dateFns.addMinutes(dateFns.parseISO(this.status_modified_at.toString()), this.duration.toNumber())
   }
 
-  isDue(){
+  async now(){
+    let q = await runQuery("RETURN localdatetime()")
+    let ret = dateFns.parseISO(q.records[0].get(0).toString())
+
+    return ret
+  }
+
+  async endOfSession(){
+    return dateFns.addMinutes(await this.now(),10)
+  }
+
+  async isDue(){
     let due_date = this.dueDate()
-    return this.status == "FAILED" || this.status == "NONE" || dateFns.isAfter(dateFns.addMinutes(new Date(),10),due_date)
+    return this.status == "FAILED" || this.status == "NONE" || dateFns.isAfter(await this.endOfSession(),due_date)
   }
 }
 
@@ -129,7 +140,13 @@ class User extends Node{
   async getDueAttempts(){
     let as = await this.getAttempts()
 
-    return as.filter(a=>a.isDue())
+    let ret = []
+
+    for(let a of as){
+      if(await a.isDue()) ret.push(a)
+    }
+ 
+    return ret
   }
 
   async getNextDueAttempt(){
@@ -347,8 +364,8 @@ async function study(uid){
       a = await a.fail()
     } 
 
-    if(a.isDue())
-      console.log("This will be asked again...")
+    if(await a.isDue())
+      console.log("This (" +a.id+ ") will be asked again in " + a.duration.toNumber() + " minutes")
     else
       console.log("You're done with this card for now")
 
