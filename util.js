@@ -1,15 +1,5 @@
 let debug = false
 
-//TODO: 
-// * Attempt all existing sentences
-//TODO: TTS audio solution (Chinese and russian)
-
-//TODO: js indentation plugin
-//TODO: Add more sentences.  Taxonomy.  
-//TODO: Start building UI (other package?)
-//TODO: Design the SRS features.  Attempts join sentences and point to user
-//        Attempts need dates?  
-//TODO: user/ownership/multiplayer/gamification/social features
 
 let env = require("./env.js")
 

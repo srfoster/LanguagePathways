@@ -1,4 +1,19 @@
 
+
+//TODO: More sentences
+//  Deal with capitalization idiosyncrasies
+    ni ai wo -> "you love Me"
+
+//TODO: Filter out attempts for sentences that have no targets via that attempt's attempt types... (Dead ends.  Learning only happens when you traverse a :To relation...)
+
+//TODO: Pinyn + Russian phonetics
+
+//TODO: Russian/Chinese audio solution 
+
+//TODO: js indentation plugin
+//TODO: Start building UI (other package?)
+//TODO: user/ownership/multiplayer/gamification/social features
+
 How to study as a particular user
 
 ```
