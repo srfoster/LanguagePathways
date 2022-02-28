@@ -47,11 +47,11 @@ class Node{
 
 class Attempt extends Edge{
   async pass(){
-    return await resolve1("MATCH ()-[a:Attempt]->() WHERE id(a) = $id SET a += {status: \"PASSED\", modified_at: localdatetime(), status_changed_at: localdatetime(), times_right: a.times_right+1, duration: a.duration*2} RETURN a", {id: this.id})
+    return await resolve1("MATCH ()-[a:Attempt]->() WHERE id(a) = $id SET a += {status: \"PASSED\", modified_at: localdatetime(), status_modified_at: localdatetime(), times_right: a.times_right+1, duration: a.duration*2} RETURN a", {id: this.id})
   }
 
   async fail(){
-    return await resolve1("MATCH ()-[a:Attempt]->() WHERE id(a) = $id SET a += {status: \"FAILED\", modified_at: localdatetime(), status_changed_at: localdatetime(), times_wrong: a.times_wrong+1, duration: a.duration/2} RETURN a", {id: this.id})
+    return await resolve1("MATCH ()-[a:Attempt]->() WHERE id(a) = $id SET a += {status: \"FAILED\", modified_at: localdatetime(), status_modified_at: localdatetime(), times_wrong: a.times_wrong+1, duration: a.duration/2} RETURN a", {id: this.id})
   }
 
   async reset(){
@@ -82,10 +82,14 @@ class Attempt extends Edge{
        if(side == "front")
          console.log(at.type, at.params, "______")
        if(side == "back"){
-         console.log(at.type, at.params, target_s.data, await target_s.describe())
+         console.log(at.type, at.params, target_s.data)
        }
      }
    }
+
+   if(side == "back") //Display metadata about the front of the card, if we are looking at back
+     console.log(await s.describe())
+
 }
 
   async getAttemptTypes(){
@@ -231,9 +235,24 @@ async function translation(s,lang){
 }
 
 function addSentence(s){
-  return runQuery(
+  return resolve1(
     'MERGE (s:Sentence {data: $sentenceData}) RETURN s',
     { sentenceData: s })
+}
+
+//TODO: too specific to my 3 langs
+async function addTriplet(s){
+  let enS = await addSentence(s)
+  let zhS = await extendZhCn(s) 
+  let ruS = await extendRu(s) 
+
+  extendEn(zhS.data) 
+  extendRu(zhS.data) 
+
+  extendEn(ruS.data) 
+  extendZhCn(ruS.data) 
+
+  return [enS,zhS,ruS] 
 }
 
 function addWord(w){
@@ -255,20 +274,22 @@ function linkWordAndSentence(w,s){
 async function extendTo(s,lang){
   await addSentence(s)
   var to = (await translation(s, lang)).text
-  await addSentence(to)
+  let s2 = await addSentence(to)
   await linkSentences(s,to, lang)
+
+  return s2
 }
 
 async function extendZhCn(s){
-  await extendTo(s, "zh-CN")
+  return await extendTo(s, "zh-CN")
 }
 
 async function extendEn(s){
-  await extendTo(s, "en")
+  return await extendTo(s, "en")
 }
 
 async function extendRu(s){
-  await extendTo(s, "ru")
+  return await extendTo(s, "ru")
 }
 
 function sayEn(s){
@@ -409,6 +430,9 @@ module.exports = {
   addReadingAttemptType,
   unattemptedSentences,
   randomUnattemptedSentence,
+
+  //A bit too specific.  Abstract these better.
+  addTriplet,
 
   //High level
   study,
