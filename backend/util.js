@@ -9,6 +9,7 @@ const driver = neo4j.driver(env.uri, neo4j.auth.basic(env.uname, env.pword))
 //Should call...
 //await driver.close()
 
+
 async function runQuery(s, d){
 
 if(debug) console.log(s)
@@ -45,13 +46,37 @@ class Node{
   }
 }
 
+
+
+
+let cachedNow;
+let clearCachedNow;
+
 class Attempt extends Edge{
+  toJson(){
+    return {id: this.id, status: this.status, duration: this.duration.toNumber(), status_modified_at: this.status_modified_at.toString() }
+  }
+  
   async pass(){
-    return await resolve1("MATCH ()-[a:Attempt]->() WHERE id(a) = $id SET a += {status: \"PASSED\", modified_at: localdatetime(), status_modified_at: localdatetime(), times_right: a.times_right+1, duration: a.duration*2} RETURN a", {id: this.id})
+    return await resolve1("MATCH ()-[a:Attempt]->() WHERE id(a) = $id SET a += {status: \"PASSED\", modified_at: localdatetime(), status_modified_at: localdatetime(), times_right: a.times_right+1, duration: $newDuration} RETURN a", {id: this.id, newDuration: neo4j.int(this.nextDuration())})
+  }
+
+  nextDuration(){
+    if(this.duration.toNumber() <= 10){ //10 minutes -> 20 minutes
+      return 20
+    }
+
+    if(this.duration.toNumber() < 60*24){ //Less than 1 day, set to 1 day
+      return 60*24
+    }
+
+    if(this.duration.toNumber() >= 60*24){ //Start doubling if duration is more than a day
+      return this.duration.toNumber() * 2
+    }
   }
 
   async fail(){
-    return await resolve1("MATCH ()-[a:Attempt]->() WHERE id(a) = $id SET a += {status: \"FAILED\", modified_at: localdatetime(), status_modified_at: localdatetime(), times_wrong: a.times_wrong+1, duration: a.duration/2} RETURN a", {id: this.id})
+    return await resolve1("MATCH ()-[a:Attempt]->() WHERE id(a) = $id SET a += {status: \"FAILED\", modified_at: localdatetime(), status_modified_at: localdatetime(), times_wrong: a.times_wrong+1, duration: 10} RETURN a", {id: this.id})
   }
 
   async reset(){
@@ -64,6 +89,10 @@ class Attempt extends Edge{
 
   async back(){
     return await this.flashCard("back")
+  }
+
+  getSentence(){
+    return resolve1( 'MATCH (u:User)-[a:Attempt]->(s:Sentence) WHERE id(a) = $attempt_id RETURN s', { attempt_id: this.id })
   }
 
   async flashCard(side){
@@ -108,11 +137,22 @@ class Attempt extends Edge{
     return dateFns.addMinutes(dateFns.parseISO(this.status_modified_at.toString()), this.duration.toNumber())
   }
 
+  //NOTE: This method is debounced, see global cachedNow...
   async now(){
-    let q = await runQuery("RETURN localdatetime()")
-    let ret = dateFns.parseISO(q.records[0].get(0).toString())
+    if(cachedNow){
+      return cachedNow
+    }
 
-    return ret
+    if(clearCachedNow) clearTimeout(clearCachedNow)
+    clearCachedNow = setTimeout(()=>{
+      cachedNow = undefined
+    },10000)
+
+    let q = await runQuery("RETURN localdatetime()")
+
+    cachedNow = dateFns.parseISO(q.records[0].get(0).toString())
+
+    return cachedNow
   }
 
   async endOfSession(){
@@ -121,7 +161,8 @@ class Attempt extends Edge{
 
   async isDue(){
     let due_date = this.dueDate()
-    return this.status == "FAILED" || this.status == "NONE" || dateFns.isAfter(await this.endOfSession(),due_date)
+    let due_date_passed = dateFns.isAfter(await this.endOfSession(),due_date)
+    return this.status == "FAILED" || this.status == "NONE" || due_date_passed
   }
 }
 
@@ -386,7 +427,8 @@ async function study(uid){
   while(a){
     let as = await u.getDueAttempts()
 
-    console.log("*************")
+    console.log("\n\n\n\n\n\n*************")
+    console.log(a)
     console.log("Cards remaining: " + as.length)
     await a.front()
 
