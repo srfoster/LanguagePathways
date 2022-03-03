@@ -14,6 +14,8 @@ import CardActions from '@mui/material/CardActions';
 import CardContent from '@mui/material/CardContent';
 import Container from '@mui/material/Container';
 
+
+
 function App() {
   return (
     <>
@@ -32,10 +34,10 @@ function App() {
 function RandomSentence() {
   let params = useParams();
  
-  let [count,setCount] = useState<any>(0)
-  let [sentence,setSentence] = useState<any>(undefined)
-  let [targets,setTargets] = useState<any>(undefined)
-  let [loadingTargets,setLoadingTargets] = useState<any>(false)
+  let [count,setCount] = useState(0)
+  let [sentence,setSentence] = useState(undefined)
+  let [targets,setTargets] = useState(undefined)
+  let [loadingTargets,setLoadingTargets] = useState(false)
   
   useEffect(()=>{
     fetch(`http://localhost:8000/users/${params.user_id}/sentences/random`)
@@ -57,17 +59,22 @@ function RandomSentence() {
 
   return <Card>
     <CardContent>
-       {sentence && sentence.data}
+       {sentence && <>{sentence.data}
+         {/* <Button onClick={()=>{
+             let utt = new SpeechSynthesisUtterance(sentence.data)
+             window.speechSynthesis.speak( utt)
+         }}>Say English</Button> */}
+       </>}
        <div>
          <Button onClick={getTargets}>Continue</Button>
        </div>
        {loadingTargets && <p>Loading...</p>}
-       {targets && targets.map((t:any)=><p>{t.data}</p>)}
+       {targets && targets.map((t)=><p>{t.data}</p>)}
      </CardContent>
  
      <div>
        <Button onClick={()=>{
-         setCount((count:any)=>count+1) 
+         setCount((count)=>count+1) 
          setTargets(undefined)
        }}>Next</Button>
      </div>
