@@ -1,6 +1,7 @@
-
-
 //TESTS
+
+//TODO: Start building UI (other package?)
+//  REST API for doing study.  TODO: Represent current card in data, user has a location, can choose paths based on that...?
 
 //TODO: More sentences
 //  Deal with capitalization idiosyncrasies
@@ -13,7 +14,6 @@
 //TODO: Russian/Chinese audio solution 
 
 //TODO: js indentation plugin
-//TODO: Start building UI (other package?)
 //TODO: user/ownership/multiplayer/gamification/social features
 
 How to study as a particular user

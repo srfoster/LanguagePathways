@@ -35,7 +35,6 @@ function RandomSentence() {
   let [count,setCount] = useState<any>(0)
   let [sentence,setSentence] = useState<any>(undefined)
   let [targets,setTargets] = useState<any>(undefined)
-  let [loadingTargets,setLoadingTargets] = useState<any>(false)
   
   useEffect(()=>{
     fetch(`http://localhost:8000/users/${params.user_id}/sentences/random`)
@@ -46,12 +45,10 @@ function RandomSentence() {
   }, [count])
 
   const getTargets = ()=>{
-    setLoadingTargets(true)
     fetch(`http://localhost:8000/users/${params.user_id}/sentences/${sentence.id}`)
     .then(response => response.json())
     .then(data => {
       setTargets(data.targets)
-      setLoadingTargets(false)
     }); 
   }
 
@@ -61,7 +58,6 @@ function RandomSentence() {
        <div>
          <Button onClick={getTargets}>Continue</Button>
        </div>
-       {loadingTargets && <p>Loading...</p>}
        {targets && targets.map((t:any)=><p>{t.data}</p>)}
      </CardContent>
  

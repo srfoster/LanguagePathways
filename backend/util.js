@@ -1,6 +1,7 @@
 let debug = false
 
 
+
 let env = require("./env.js")
 
 const dateFns = require('date-fns')
@@ -52,13 +53,13 @@ class Node{
 let cachedNow;
 let clearCachedNow;
 
-class Attempt extends Edge{
+class Interest extends Edge{
   toJson(){
     return {id: this.id, status: this.status, duration: this.duration.toNumber(), status_modified_at: this.status_modified_at.toString() }
   }
   
   async pass(){
-    return await resolve1("MATCH ()-[a:Attempt]->() WHERE id(a) = $id SET a += {status: \"PASSED\", modified_at: localdatetime(), status_modified_at: localdatetime(), times_right: a.times_right+1, duration: $newDuration} RETURN a", {id: this.id, newDuration: neo4j.int(this.nextDuration())})
+    return await resolve1("MATCH ()-[a:Interest]->() WHERE id(a) = $id SET a += {status: \"PASSED\", modified_at: localdatetime(), status_modified_at: localdatetime(), times_right: a.times_right+1, duration: $newDuration} RETURN a", {id: this.id, newDuration: neo4j.int(this.nextDuration())})
   }
 
   nextDuration(){
@@ -76,11 +77,11 @@ class Attempt extends Edge{
   }
 
   async fail(){
-    return await resolve1("MATCH ()-[a:Attempt]->() WHERE id(a) = $id SET a += {status: \"FAILED\", modified_at: localdatetime(), status_modified_at: localdatetime(), times_wrong: a.times_wrong+1, duration: 10} RETURN a", {id: this.id})
+    return await resolve1("MATCH ()-[a:Interest]->() WHERE id(a) = $id SET a += {status: \"FAILED\", modified_at: localdatetime(), status_modified_at: localdatetime(), times_wrong: a.times_wrong+1, duration: 10} RETURN a", {id: this.id})
   }
 
   async reset(){
-    return await resolve1("MATCH ()-[a:Attempt]->() WHERE id(a) = $id SET a += {status: \"NONE\", created_at: localdatetime(), modified_at: localdatetime(), status_modified_at: localdateTime(), times_wrong: 0, times_right: 0, duration: 10} RETURN a", {id: this.id})
+    return await resolve1("MATCH ()-[a:Interest]->() WHERE id(a) = $id SET a += {status: \"NONE\", created_at: localdatetime(), modified_at: localdatetime(), status_modified_at: localdateTime(), times_wrong: 0, times_right: 0, duration: 10} RETURN a", {id: this.id})
   }
 
   async front(){
@@ -92,13 +93,27 @@ class Attempt extends Edge{
   }
 
   getSentence(){
-    return resolve1( 'MATCH (u:User)-[a:Attempt]->(s:Sentence) WHERE id(a) = $attempt_id RETURN s', { attempt_id: this.id })
+    return resolve1( 'MATCH (u:User)-[a:Interest]->(s:Sentence) WHERE id(a) = $attempt_id RETURN s', { attempt_id: this.id })
+  }
+  
+  async targetSentences(){
+   let s = await resolve1( 'MATCH (u:User)-[a:Interest]->(s:Sentence) WHERE id(a) = $attempt_id RETURN s', { attempt_id: this.id })
+   let a = await resolve1( 'MATCH (u:User)-[a:Interest]->(s:Sentence) WHERE id(a) = $attempt_id RETURN a', { attempt_id: this.id })
+   let ats = await a.getInterestTypes()
+   console.log(ats) 
+
+   let target_sentences = await Promise.all(ats.map(async (at)=>{
+     return await at.getAnswerFor(s)
+   }))
+
+   return target_sentences.filter((x)=>x)
   }
 
   async flashCard(side){
-   let s = await resolve1( 'MATCH (u:User)-[a:Attempt]->(s:Sentence) WHERE id(a) = $attempt_id RETURN s', { attempt_id: this.id })
-   let a = await resolve1( 'MATCH (u:User)-[a:Attempt]->(s:Sentence) WHERE id(a) = $attempt_id RETURN a', { attempt_id: this.id })
-   let ats = await a.getAttemptTypes()
+   let s = await resolve1( 'MATCH (u:User)-[a:Interest]->(s:Sentence) WHERE id(a) = $attempt_id RETURN s', { attempt_id: this.id })
+   let a = await resolve1( 'MATCH (u:User)-[a:Interest]->(s:Sentence) WHERE id(a) = $attempt_id RETURN a', { attempt_id: this.id })
+   let ats = await a.getInterestTypes()
+   console.log(ats) 
 
    let target_sentences = await Promise.all(ats.map(async (at)=>{
      return await at.getAnswerFor(s)
@@ -121,7 +136,7 @@ class Attempt extends Edge{
 
 }
 
-  async getAttemptTypes(){
+  async getInterestTypes(){
     let atis = JSON.parse(this.attempt_type_ids)
 
     let ret = []
@@ -166,7 +181,7 @@ class Attempt extends Edge{
   }
 }
 
-class AttemptType extends Node{
+class InterestType extends Node{
   async getAnswerFor(sentence){
     if(this.cached_answer) return this.cached_answer
     this.cached_answer = await resolve1(this.cypher, {...JSON.parse(this.params), id: sentence.id})
@@ -176,15 +191,21 @@ class AttemptType extends Node{
 }
 
 class User extends Node{
-  async getAttempts(){
+  getRandomInterestingSentence(){
+    return resolve1(
+     'MATCH (s:Sentence) WHERE (:User)-[:Interest]->(s) RETURN s, rand() as r ORDER BY r LIMIT 1'
+    )
+  }
+ 
+  async getInterests(){
     return await resolveMany(
-      'match (u:User)-[a:Attempt]->(s:Sentence) where id(u) = $id return a',
+      'match (u:User)-[a:Interest]->(s:Sentence) where id(u) = $id return a',
       { id: this.id}) 
   }
 
   //TODO: This won't scale.  Do the logic in the db
-  async getDueAttempts(){
-    let as = await this.getAttempts()
+  async getDueInterests(){
+    let as = await this.getInterests()
 
     let ret = []
 
@@ -195,22 +216,22 @@ class User extends Node{
     return ret
   }
 
-  async getNextDueAttempt(){
-    let as =  (await this.getDueAttempts())
+  async getNextDueInterest(){
+    let as =  (await this.getDueInterests())
 
     return as[Math.floor(Math.random()*as.length)] 
   }
 
 
-  async clearAttempts(){
+  async clearInterests(){
     await runQuery(
-      'MATCH (u:User)-[a:Attempt]->(s:Sentence) WHERE id(u) = $id DELETE a',
+      'MATCH (u:User)-[a:Interest]->(s:Sentence) WHERE id(u) = $id DELETE a',
       { id: this.id}) 
   }
 
-  async beginAttempting(s, ats){
+  async beginInteresting(s, ats){
     let a = await resolve1(
-      'MATCH (u:User),(s:Sentence) WHERE id(u) = $id AND id(s) = $sentence_id MERGE (u)-[a:Attempt {attempt_type_ids: $attempt_type_ids}]->(s) RETURN a',
+      'MATCH (u:User),(s:Sentence) WHERE id(u) = $id AND id(s) = $sentence_id MERGE (u)-[a:Interest {attempt_type_ids: $attempt_type_ids}]->(s) RETURN a',
       { id: this.id, sentence_id: s.id, attempt_type_ids: JSON.stringify(ats.map((a)=>a.id))}) 
     a = await a.reset()
 
@@ -219,6 +240,10 @@ class User extends Node{
 }
 
 class Sentence extends Node{
+  toJson(){
+    return {id: this.id, data: this.data}
+  }
+
   async describe(){
     let en = await this.translation("en")
     let zh = await this.translation("zh-CN")
@@ -258,10 +283,10 @@ async function resolve1(s,d){
 function wrap(data){
   let Type  
 
-  if(data.type == "Attempt")  Type = Attempt
+  if(data.type == "Interest")  Type = Interest
   if(data.labels && data.labels.indexOf("Sentence")>=0) Type = Sentence
   if(data.labels && data.labels.indexOf("Word")>=0) Type = Word
-  if(data.labels && data.labels.indexOf("AttemptType")>=0) Type = AttemptType
+  if(data.labels && data.labels.indexOf("InterestType")>=0) Type = InterestType
   if(data.labels && data.labels.indexOf("User")>=0) Type = User
 
   if(!Type) throw Error("Could not find constructor for: "+ JSON.stringify(data))
@@ -355,14 +380,14 @@ function addUser(username){
 }
 
 
-function addAttemptType(type, cypher, params){
+function addInterestType(type, cypher, params){
   return runQuery(
-    'MERGE (at:AttemptType {type: $type, cypher: $cypher, params: $params}) RETURN at',
+    'MERGE (at:InterestType {type: $type, cypher: $cypher, params: $params}) RETURN at',
     {type: type, cypher: cypher, params: JSON.stringify(params)}) 
 }
 
-function addReadingAttemptType(lang){
-  addAttemptType("Reading", "MATCH (s1:Sentence)-[t:To]->(s2:Sentence) WHERE t.through = \"gt\" AND t.output = $output AND id(s1) = $id RETURN s2", {output: lang})
+function addReadingInterestType(lang){
+  addInterestType("Reading", "MATCH (s1:Sentence)-[t:To]->(s2:Sentence) WHERE t.through = \"gt\" AND t.output = $output AND id(s1) = $id RETURN s2", {output: lang})
 }
 
 function deleteNode(id){
@@ -374,7 +399,7 @@ function deleteNode(id){
 //TODO: Will get large, need to add LIMIT
 function unattemptedSentences(username, type){
   return runQuery(
-    'MATCH (u:User),(s1)-[a:Attempt]->(s2),(s3:Sentence) WHERE id(u) = a.user AND u.username = $username AND a.type = $type AND s3 <> s1 AND s3 <> s2 RETURN s3',
+    'MATCH (u:User),(s1)-[a:Interest]->(s2),(s3:Sentence) WHERE id(u) = a.user AND u.username = $username AND a.type = $type AND s3 <> s1 AND s3 <> s2 RETURN s3',
     { username: username, type: type}) 
 }
 
@@ -398,26 +423,24 @@ async function get(id){
 async function setup(uid){
   let u = await get(uid); 
 
-  let ss = await resolveMany("MATCH (s:Sentence),(u:User) WHERE NOT (u)-[:Attempt]->(s) AND id(u) = $uid RETURN s",{uid})
+  let ss = await resolveMany("MATCH (s:Sentence),(u:User) WHERE NOT (u)-[:Interest]->(s) AND id(u) = $uid RETURN s",{uid})
 
   //TODO: Gross hardcoded attempttype ids
-  let read_zh_CN = await get(43); 
-  let read_en = await get(44); 
-  let read_ru = await get(45); 
+  let interest_types = await resolveMany("MATCH (i:InterestType) RETURN i")
 
-  //await u.clearAttempts(); 
+  //await u.clearInterests(); 
 
   for(let s of ss){
     console.log("Found new sentence.  Will begin attempting: " + s.data)
-    await u.beginAttempting(s,  [read_zh_CN,read_en,read_ru])
+    await u.beginInteresting(s,  interest_types)
   }
 }
 
 async function study(uid){
-  await setup(uid) //Makes new :Attempts for any new sentences (without :Attempts)
+  await setup(uid) //Makes new :Interests for any new sentences (without :Interests)
 
   let u = await get(uid)
-  let a = await u.getNextDueAttempt()
+  let a = await u.getNextDueInterest()
 
   const readline = require('readline/promises').createInterface({
     input: process.stdin,
@@ -425,7 +448,7 @@ async function study(uid){
   })
 
   while(a){
-    let as = await u.getDueAttempts()
+    let as = await u.getDueInterests()
 
     console.log("\n\n\n\n\n\n*************")
     console.log(a)
@@ -449,7 +472,7 @@ async function study(uid){
     else
       console.log("You're done with this card for now")
 
-    a = await u.getNextDueAttempt()
+    a = await u.getNextDueInterest()
   }
 
   //readline.close()
@@ -468,8 +491,8 @@ module.exports = {
   sayEn,
   sayZh,
   addUser,
-  addAttemptType,
-  addReadingAttemptType,
+  addInterestType,
+  addReadingInterestType,
   unattemptedSentences,
   randomUnattemptedSentence,
 
@@ -482,7 +505,7 @@ module.exports = {
   //Low level
   get,
   deleteNode,
-  runQuery, resolve1
+  runQuery, resolve1, resolveMany
 }
 
 
