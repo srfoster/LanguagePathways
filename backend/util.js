@@ -7,31 +7,28 @@ let env = require("./env.js")
 const dateFns = require('date-fns')
 const neo4j = require('neo4j-driver')
 const driver = neo4j.driver(env.uri, neo4j.auth.basic(env.uname, env.pword))
-//Should call...
+//On exit should call...
 //await driver.close()
 
 
 async function runQuery(s, d){
+	if(debug) console.log(s)
+		const session = driver.session()
+		const sentenceData = s
 
-if(debug) console.log(s)
+			try {
+				const result = await session.run( s, d )
 
-const session = driver.session()
-const sentenceData = s
+					//  const singleRecord = result.records[0]
+					//  const node = singleRecord.get(0)
+					//  return node
 
-try {
-  const result = await session.run( s, d )
-
-//  const singleRecord = result.records[0]
-//  const node = singleRecord.get(0)
-//  return node
-
-  return result
-} finally {
-  await session.close()
+					return result
+			} finally {
+				await session.close()
+			}
 }
 
-// on application exit:
-}
 
 class Edge{
   constructor(id,properties){

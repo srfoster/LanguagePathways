@@ -4,7 +4,7 @@
   "description": "",
   "main": "util.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
   },
   "author": "",
   "license": "ISC",
@@ -20,5 +20,8 @@
     "pinyin": "^2.11.0",
     "readline-sync": "^1.4.10",
     "yanyu": "^0.1.3"
+  },
+  "devDependencies": {
+    "jest": "^27.5.1"
   }
 }
