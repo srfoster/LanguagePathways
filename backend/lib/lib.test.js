@@ -1,5 +1,10 @@
-let {Sentence, User} = require("./lib.js")
+let {User} = require("./lib.js")
 let util = require("./util.js")
+
+afterEach(async () => {
+  //Clear the DB
+  await util.runQuery("MATCH (x)-[r]-() DELETE x,r")
+});	
 
 test('we can create and destroy users', async () => {
   let bob = await User.create({username: "bob"})
@@ -13,13 +18,14 @@ test('we can create and destroy users', async () => {
   expect(deadBob).toBe(null);
 });
 
+
 test('we can create and destroy memories for users', async () => {
   let bob = await User.create({username: "bob"})
 
                           //renderer: EnglishTextComponent ???
   let m = await bob.createMemory({medium: "text", language: "English", data: "Helo World"})
 
-  let ms = await bob.memories()
+  let ms = await bob.getMemories()
 
   expect(ms.map((m)=>m.id)).toContain(m.id)
 
@@ -30,10 +36,8 @@ test('we can create and destroy memories for users', async () => {
   let deadM = await util.getNode(m.id)
   expect(deadM).toBe(null);
 
-  ms = await bob.memories()
+  ms = await bob.getMemories()
   expect(ms.map((m)=>id)).not.toContain(m.id)
-
-  bob.destroy() //Put in teardown
 
 });
 
@@ -64,13 +68,6 @@ test('we can link memories of a user, or between users', async () => {
 
   expect(bobM2_bobM.reason).toBe("Captioning my image")
   expect(aliceM_bobM2.reason).toBe("Commenting on Bob's image")
-  
-  //TODO: Move to teardown...
-  bobM.destroy()
-  bobM2.destroy()
-  aliceM.destroy()
-  bob.destroy()
-  alice.destroy()
 });
 
 test('we can unlink a user\'s memories', async () => {
@@ -83,20 +80,48 @@ test('we can unlink a user\'s memories', async () => {
 
   let incomingBobM   = await bobM.incomingMemories()
 
-  expect(incomingBobM.length).toBe(2)
+  expect(incomingBobM.length).toBe(1)
 
-  bobM2.unlink(bobm)
+  await bobM2.unlink(bobM)
 
   incomingBobM   = await bobM.incomingMemories()
   expect(incomingBobM.length).toBe(0)
 });
 
-test('Users can "study" their things as flashcards', async () => {
+test('we can create an SRS for Users, and we can serve users flashcards to study', async () => {
   //Users create new "study sessions"?  "Study session type"  
 
-  //Filter card fronts by type/metadata?  Filter backs by relationship from front to back 
+  let bob   = await User.create({username: "bob"})
+  let front = await bob.createMemory({medium: "text", language: "English", data: "Hello"})
+  let back  = await bob.createMemory({medium: "audio",  language: "Chinese", data: "1010010"})
+
+  front.link(back, {reason: "translates to", meta: "teacher said so"})
+
+  let srs = await bob.createSRS(
+     {question_language: ".*", 
+      question_medium: ".*", 
+      answer_language: ".*", 
+      answer_medium: ".*"})
+
+  let toStudy = await srs.getNextUnstudiedQuestion()
+
+  expect(toStudy.id).toBe(front.id)
+
+  let answer = await srs.getAnswer()
+
+  expect(answer.id).toBe(back.id)
+
+  await srs.markCorrect()
+
+  toStudy = await srs.getNextUnstudiedQuestion()
+
+  expect(toStudy).toBe(null) 
+
+  let toStudyAgain = await srs.getNextStudiedQuestion()
+  expect(toStudyAgain.id).toBe(front.id) 
 });
 
-test('Users can find other user\'s things and register interest in them', async () => {
+test('we can serve users flashcards with spaced repetition features', async () => {
 });
+
 

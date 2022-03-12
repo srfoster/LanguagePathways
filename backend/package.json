@@ -4,7 +4,7 @@
   "description": "",
   "main": "util.js",
   "scripts": {
-    "test": "jest"
+    "test": "ENV=TEST jest"
   },
   "author": "",
   "license": "ISC",

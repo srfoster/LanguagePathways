@@ -1,16 +1,18 @@
+//let debug = true
 let debug = false
 
-let env = require("./env.js")
+let env = require("../env.js")[process.env.ENV]
 
 const dateFns = require('date-fns')
 const neo4j = require('neo4j-driver')
 const driver = neo4j.driver(env.uri, neo4j.auth.basic(env.uname, env.pword))
 //NOTE: should call close() on driver...
 
-
 async function runQuery(s, d){
-	if(debug) console.log(s)
-		const session = driver.session()
+
+  const session = driver.session()
+
+	if(debug) console.log(s, d)
 		const sentenceData = s
 
 			try {
