@@ -67,7 +67,13 @@ function wrap(data){
   let Type  
 
   for(let k of Object.keys(bindings)){
+    //Node
     if(data.labels && data.labels.indexOf(k)>=0){
+      Type = bindings[k]
+      break
+    }
+    //Edge (why different?)
+    if(data.type == k){
       Type = bindings[k]
       break
     }
@@ -92,16 +98,17 @@ async function getNode(id){
     {id}) 
 }
 
-function deleteNode(id){
-  return runQuery("MATCH (x) WHERE id(x) = $id DELETE x", {id})
+//Can we figure out how to do this with one query?
+async function deleteNode(id){
+  await runQuery("MATCH (x)-[r]-(y) WHERE id(x) = $id DELETE x,r", {id})
+  await runQuery("MATCH (x) WHERE id(x) = $id DELETE x", {id})
 }
 
 //Probably can be target of injection attacks with weird props
 //  Don't pass user data into this function (at least not in the keys of the props)
 function createNode(type_name, props){
   let prop_string = Object.keys(props).map((p)=>p+": $"+p).join(",")
-  return resolve1("MERGE (x:"+type_name+" {"+prop_string+"}) RETURN x", props)
-}
+  return resolve1("MERGE (x:"+type_name+" {"+prop_string+"}) RETURN x", props) }
 
 
 module.exports = {
