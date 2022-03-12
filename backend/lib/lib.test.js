@@ -62,7 +62,6 @@ test('we can link memories of a user, or between users', async () => {
   expect(outgoingBobM2.length).toBe(1)
   expect(outgoingAliceM.length).toBe(1)
 
-  console.log(bobM2_bobM)
   expect(bobM2_bobM.reason).toBe("Captioning my image")
   expect(aliceM_bobM2.reason).toBe("Commenting on Bob's image")
   
@@ -72,6 +71,24 @@ test('we can link memories of a user, or between users', async () => {
   aliceM.destroy()
   bob.destroy()
   alice.destroy()
+});
+
+test('we can unlink a user\'s memories', async () => {
+  let bob   = await User.create({username: "bob"})
+
+                          //renderer: EnglishTextComponent ???
+  let bobM = await bob.createMemory({medium: "image", language: "N/A", data: "1010001"})
+  let bobM2 = await bob.createMemory({medium: "text",  language: "English", data: "First date with Alice"})
+  let bobM2_bobM = await bobM2.link(bobM, {reason: "Captioning my image"}) 
+
+  let incomingBobM   = await bobM.incomingMemories()
+
+  expect(incomingBobM.length).toBe(2)
+
+  bobM2.unlink(bobm)
+
+  incomingBobM   = await bobM.incomingMemories()
+  expect(incomingBobM.length).toBe(0)
 });
 
 test('Users can "study" their things as flashcards', async () => {

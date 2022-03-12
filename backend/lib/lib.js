@@ -11,6 +11,10 @@ class Memory extends Node{
     return l
   }  
 
+  async unlink(m2){
+    //await runQuery("MATCH (m1:Memory)-[l:Link]->(m2:Memory) WHERE id(m1)=$m1Id AND id(m2)=$m2Id DELETE l", {m1Id: this.id, m2Id: m2.id, props})
+  }  
+
   async incomingMemories(){
     let ms = await resolveMany("MATCH (m1:Memory)<-[l:Link]-(m2:Memory) WHERE id(m1)=$m1Id RETURN distinct(m2)", {m1Id: this.id})
 
