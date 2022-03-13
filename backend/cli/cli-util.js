@@ -14,9 +14,20 @@ function prompt(q){
 let crud = {
   show: (resource_class, afterFind)=> {
     return async (cmd_parts)=>{
-			let id = Number(cmd_parts.pop())
+			let id = Number(cmd_parts.shift())
 			let s = await resource_class.findById(id)
 			return await afterFind(s)
+    }
+  },
+  update: (resource_class, afterFind)=> {
+    return async (cmd_parts)=>{
+			let id = Number(cmd_parts.shift())
+      let props = JSON.parse((cmd_parts.join(" ")||"{}"))
+
+			let s = await resource_class.findById(id)
+      s = await s.update(props)
+
+			return s
     }
   },
   new: (resource_class, prop_names, construct)=>{

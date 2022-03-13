@@ -101,7 +101,8 @@ test('we can create an SRS for Users, and we can serve users flashcards to study
      {question_language: ".*", 
       question_medium: ".*", 
       answer_language: ".*", 
-      answer_medium: ".*"})
+      answer_medium: ".*",
+      link_reason: "translates to" })
 
   let toStudy = await srs.getNextUnstudiedQuestion()
 

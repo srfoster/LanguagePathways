@@ -8,12 +8,6 @@ Try the CLI!
 ENV=DEV ./scripts/admin-user stephen
 
 TODO:
-* CLI: Crud
-  - Update
-* Migration: Make srss have a link_reason regex too.  "translates to", "sounds like", "looks like", etc...
-* LIB: unbreak getNextStudiedQuestion and any other broken tests...
-
-
 * USE: Add some actual memories that I care about
    - What is necessary to make this useable for myself? 
 

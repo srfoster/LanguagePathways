@@ -44,6 +44,9 @@ class Node{
   destroy(){
     return deleteNode(this.id) 
   }
+  update(props){
+    return resolve1("MATCH (x) WHERE id(x)=$id SET x += $props RETURN x", {id:this.id, props}) 
+  }
 }
 Node.createOrFind = function(properties){
   return createNode(this.name, properties)
@@ -65,6 +68,8 @@ async function resolve1(s,d){
 
 async function resolvePath(s,d){
   let x = await runQuery(s,d)
+  if(!x.records[0]) return null
+
 	let path = x.records[0].get(0)[0]
 
   return [wrap(path.start),

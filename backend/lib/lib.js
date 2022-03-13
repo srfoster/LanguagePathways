@@ -18,7 +18,9 @@ class SRSLink extends Edge{
 
 class SRS extends Node{
   async getNextUnstudiedQuestion(){
-    let m_l_m2 = await resolvePath("MATCH (u:User)-[:Has]->(m:Memory)-[:Link]->(m2:Memory) WHERE (NOT (m)-[:SRSLink]->(m2)) AND id(u)=$uId AND m.language =~ $mLanguage AND m.medium =~ $mMedium AND m2.language =~ $m2Language AND m2.medium =~ $m2Medium AND (u)-[:Has]->(m2) RETURN (m)-[:Link]->(m2) ORDER BY rand() LIMIT 1", {uId: this.user_id, mLanguage: this.question_language, mMedium: this.question_medium, m2Language: this.answer_language, m2Medium: this.answer_medium })
+    let m_l_m2 = await resolvePath("MATCH (u:User)-[:Has]->(m:Memory)-[l:Link]->(m2:Memory) WHERE (NOT (m)-[:SRSLink]->(m2)) AND id(u)=$uId AND m.language =~ $mLanguage AND m.medium =~ $mMedium AND m2.language =~ $m2Language AND m2.medium =~ $m2Medium AND l.reason =~ $lReason AND (u)-[:Has]->(m2) RETURN (m)-[:Link]->(m2) ORDER BY rand() LIMIT 1", {uId: this.user_id, mLanguage: this.question_language, mMedium: this.question_medium, m2Language: this.answer_language, m2Medium: this.answer_medium, lReason: this.link_reason })
+
+    if(!m_l_m2) return null
 
     await runQuery("MATCH (s:SRS)-[c:CurrentQuestion]->() DELETE c",{sId: this.id})
     await runQuery("MATCH (s:SRS)-[c:CurrentAnswer]->() DELETE c",{sId: this.id})
@@ -33,12 +35,23 @@ class SRS extends Node{
     return m_l_m2[0]
   }
 
+  //Looking pretty similar to the above function.  Refactor?
   async getNextStudiedQuestion(){
-    let m = await resolve1("MATCH (u:User)-[:Has]->(m:Memory)-[:Link]->(m2:Memory), (m)-[s:SRSLink]->(m2) WHERE (s.times_right_in_a_row <= 3 OR localdatetime() > s.last_correct_at + duration({days: 2^(s.times_right_in_a_row-3)})) AND id(u)=$uId AND m.language =~ $mLanguage AND m.medium =~ $mMedium AND m2.language =~ $m2Language AND m2.medium =~ $m2Medium AND (u)-[:Has]->(m2) RETURN coalesce(m)", {uId: this.user_id, mLanguage: this.question_language, mMedium: this.question_medium, m2Language: this.answer_language, m2Medium: this.answer_medium })
+    let m_l_m2 = await resolvePath("MATCH (u:User)-[:Has]->(m:Memory)-[l:Link]->(m2:Memory), (m)-[s:SRSLink]->(m2) WHERE (s.times_right_in_a_row <= 3 OR localdatetime() > s.last_correct_at + duration({days: 2^(s.times_right_in_a_row-3)})) AND id(u)=$uId AND m.language =~ $mLanguage AND m.medium =~ $mMedium AND m2.language =~ $m2Language AND m2.medium =~ $m2Medium AND l.reason =~ $lReason AND (u)-[:Has]->(m2) RETURN (m)-[:Link]->(m2) ORDER BY rand() LIMIT 1", {uId: this.user_id, mLanguage: this.question_language, mMedium: this.question_medium, m2Language: this.answer_language, m2Medium: this.answer_medium, lReason: this.link_reason })
 
-    //TODO: Make this like the above func
+    if(!m_l_m2) return null
 
-    return m
+    await runQuery("MATCH (s:SRS)-[c:CurrentQuestion]->() DELETE c",{sId: this.id})
+    await runQuery("MATCH (s:SRS)-[c:CurrentAnswer]->() DELETE c",{sId: this.id})
+
+    await runQuery("MATCH (m:Memory),(s:SRS),(m2:Memory) WHERE id(m)=$mId AND id(m2)=$m2Id AND id(s)=$sId MERGE (s)-[:CurrentQuestion]->(m) MERGE (s)-[:CurrentAnswer]->(m2)",{mId: m_l_m2[0].id, m2Id: m_l_m2[2].id, sId: this.id})
+
+    //Unclear when we should cache and when we should invalidate.  See getAnswer,getQuestion,etc.
+    this.current_question = m_l_m2[0]
+    this.current_link = m_l_m2[1]
+    this.current_answer = m_l_m2[2]
+
+    return m_l_m2[0]
   }
 
   async getAnswer(){

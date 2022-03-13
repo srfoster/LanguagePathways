@@ -38,8 +38,11 @@ let srss = async (cmd_parts)=>{
     return user.getSRSs()
 
   let cmds = {
-    new: crud.new(SRS, ["question_language","question_medium", "answer_language", "answer_medium", "transition_reason"], (props)=>user.createOrFindSRS(props)),
+    new: crud.new(SRS, ["question_language","question_medium", "answer_language", "answer_medium", "link_reason"], (props)=>user.createOrFindSRS(props)),
     rm: crud.rm(SRS),
+    update: crud.update(SRS, (s)=>{
+      return s
+    }),
     show: crud.show(SRS, async (s)=>{
       return (await s.getCards()).map((triplet)=>{
        return {
@@ -63,6 +66,9 @@ let memories = async(cmd_parts)=>{
   let cmds = {
     new: crud.new(Memory, ["data", "language", "medium"], (props)=>user.createOrFindMemory(props)),
     rm: crud.rm(Memory),
+    update: crud.update(Memory, (m)=>{
+      return m
+    }),
     show: crud.show(Memory, async (m)=>{
       console.log(m)
       console.log("OUT:", await m.outgoingMemories())
