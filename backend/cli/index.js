@@ -1,26 +1,15 @@
 let {User, Memory, SRS} = require("../lib/lib.js")
+let {crud, prompt} = require("./cli-util.js")
 let username = process.env.CURRENT_USER
 let user     
 
-let readline = require('readline-promise').default
-
-const rli = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-  terminal: true
-});
-
-function prompt(q){
-  return rli.questionAsync(q)
-}
-
-async function adminUser(){
+let adminUser = async()=>{
   user = await User.createOrFind({username: username})
   console.log(`Welcome ${username}!  What would you like to do?`)
   repl(cmds)
 }
 
-async function repl(cmds){
+let repl = async(cmds)=>{
   while(true){
     //Read
     const cmd_parts = (await prompt(username+"> ")).split(" ")
@@ -37,8 +26,6 @@ async function repl(cmds){
       //Print
       console.log(e)
     }
-
-
   }
 }
 
@@ -46,43 +33,35 @@ function help(cmd_parts){
   return Object.keys(cmds).join(" ") 
 }
 
-async function srss(cmd_parts){
-  //List srss
+let srss = async (cmd_parts)=>{
   if(cmd_parts.length == 0)
     return user.getSRSs()
 
-  let id = Number(cmd_parts.pop())
-  let s = await SRS.findById(id)
-  return await s.getCards()
+  let cmds = {
+    new: crud.new(SRS, ["question_language","question_medium", "answer_language", "answer_medium", "transition_reason"], (props)=>user.createOrFindSRS(props)),
+    rm: crud.rm(SRS),
+    show: crud.show(SRS, (s)=>{
+      return s.getCards()
+    })
+  }
+
+  const func = cmds[cmd_parts[0]]
+  cmd_parts.shift()
+  return func(cmd_parts)
 }
 
-function memories(cmd_parts){
-  //List memories
+let memories = async(cmd_parts)=>{
   if(cmd_parts.length == 0)
     return user.getMemories()
 
   let cmds = {
-    new: async (cmd_parts)=>{
-      console.log("Cool, let's make a new memory")
-      const data     = await prompt("  data: ")
-      const language = await prompt("  language: ")
-      const medium    = await prompt("  medium: ")
-      
-      return await user.createOrFindMemory({data,language,medium}) 
-    },
-    rm: async (cmd_parts)=>{
-      let id = Number(cmd_parts.pop())
-      let m = await Memory.findById(id)
+    new: crud.new(Memory, ["data", "language", "medium"], (props)=>user.createOrFindMemory(props)),
+    rm: crud.rm(Memory),
+    show: crud.show(Memory, async (m)=>{
       console.log(m)
-      const ready = await prompt("Are you sure you want to delete this memory (y/N)? ")
-      if(ready == "y" || ready == "Y"){
-        await m.destroy()
-
-        return "Memory destroyed"
-      } else {
-        return "That was a close one!"
-      }
-    },
+      console.log("OUT:", await m.outgoingMemories())
+      console.log("IN:",  await m.incomingMemories())
+    }),
     link: async (cmd_parts)=>{
       let id1 = Number(cmd_parts[0])
       let id2 = Number(cmd_parts[1])
@@ -96,12 +75,6 @@ function memories(cmd_parts){
       console.log(m1,m2)
 
       return "Link established!"
-    },
-    show: async (cmd_parts)=>{
-      let id = Number(cmd_parts.pop())
-      let m = await Memory.findById(id)
-      console.log("OUT:", await m.outgoingMemories())
-      console.log("IN:",  await m.incomingMemories())
     },
   }
 
