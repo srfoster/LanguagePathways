@@ -45,8 +45,11 @@ class Node{
     return deleteNode(this.id) 
   }
 }
-Node.create = function(properties){
+Node.createOrFind = function(properties){
   return createNode(this.name, properties)
+}
+Node.findById = async function(id){
+  return getNode(id)
 }
 
 async function resolve1(s,d){
@@ -110,7 +113,8 @@ async function deleteNode(id){
 //  Don't pass user data into this function (at least not in the keys of the props)
 function createNode(type_name, props){
   let prop_string = Object.keys(props).map((p)=>p+": $"+p).join(",")
-  return resolve1("MERGE (x:"+type_name+" {"+prop_string+"}) RETURN x", props) }
+  return resolve1("MERGE (x:"+type_name+" {"+prop_string+"}) RETURN x", props) 
+}
 
 
 module.exports = {

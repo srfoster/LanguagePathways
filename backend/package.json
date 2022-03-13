@@ -18,6 +18,8 @@
     "neo4j-driver": "^4.4.3",
     "open": "^8.4.0",
     "pinyin": "^2.11.0",
+    "prompt-sync": "^4.2.0",
+    "readline-promise": "^1.0.5",
     "readline-sync": "^1.4.10",
     "yanyu": "^0.1.3"
   },

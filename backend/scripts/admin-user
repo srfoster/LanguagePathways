@@ -1,0 +1,4 @@
+#!/bin/bash
+
+export CURRENT_USER=$1
+node -e 'require("./cli/index.js").adminUser()'

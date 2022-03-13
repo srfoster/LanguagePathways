@@ -1,14 +1,22 @@
 
 See `./lib/lib.test.js`
-Run `./db-test` or `./db-dev` to start neo4j
-Run `npm run dev` to run the tests
+Run `./scripts/db-test` or `./scripts/db-dev` to start neo4j
+Run `npm run test` to run the tests
 
-TODO
-* Persist SRS data in neo4j (current_question, current_answer)
-* Make a CLI for studying
-  - List memories
-  - Add new memory
-  - Do SRS studying
+Try the CLI!
+
+ENV=DEV ./scripts/admin-user stephen
+
+TODO:
+* LIB: Persist SRS data in neo4j (current_question, current_answer)
+* LIB: What is necessary to make this useable for myself? 
+* CLI: Show srs status during study (how many tries left? due date?).  Etc.
+* CLI: Functions for managing srs 
+
+
+
+Milestones:
+* Finish CLI, make it a useable replacement for Anki, for myself
 * Add REST interface with express
 * Add React frontend
   - Browse memories

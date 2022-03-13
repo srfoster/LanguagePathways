@@ -18,6 +18,8 @@ class SRS extends Node{
   async getNextStudiedQuestion(){
     let m = await resolve1("MATCH (u:User)-[:Has]->(m:Memory)-[:Link]->(m2:Memory), (m)-[s:SRS]->(m2) WHERE (s.times_right_in_a_row <= 3 OR localdatetime() > s.last_correct_at + duration({days: 2^(s.times_right_in_a_row-3)})) AND id(u)=$uId AND m.language =~ $mLanguage AND m.medium =~ $mMedium AND m2.language =~ $m2Language AND m2.medium =~ $m2Medium AND (u)-[:Has]->(m2) RETURN coalesce(m)", {uId: this.user_id, mLanguage: this.question_language, mMedium: this.question_medium, m2Language: this.answer_language, m2Medium: this.answer_medium })
 
+    this.current_question = m
+
     return m
   }
 
@@ -68,8 +70,8 @@ class Memory extends Node{
 }
 
 class User extends Node{
-  async createMemory(props){
-    let m = await Memory.create(props) 
+  async createOrFindMemory(props){
+    let m = await Memory.createOrFind(props) 
 
     let h = await runQuery("MATCH (m:Memory),(u:User) WHERE id(u)=$id AND id(m)=$mId CREATE (u)-[h:Has {creator: true}]->(m) RETURN h", {id: this.id, mId: m.id})
     
@@ -83,10 +85,10 @@ class User extends Node{
     return ms
   }
 
-  async createSRS(props){
-    let s = await SRS.create(props) 
+  async createOrFindSRS(props){
+    let s = await SRS.createOrFind({question_language:".*",question_medium: ".*", answer_language: ".*", answer_medium: ".*", ...props}) 
 
-    let h = await runQuery("MATCH (s:SRS),(u:User) WHERE id(u)=$id AND id(s)=$sId CREATE (u)-[h:Has {creator: true}]->(s) RETURN h", {id: this.id, sId: s.id})
+    let h = await runQuery("MATCH (s:SRS),(u:User) WHERE id(u)=$id AND id(s)=$sId MERGE (u)-[h:Has {creator: true}]->(s) RETURN h", {id: this.id, sId: s.id})
 
     s.user_id = this.id
 
