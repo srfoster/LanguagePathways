@@ -107,12 +107,13 @@ async function study(cmd_parts){
     return "Looks like you're done for now!" 
   }
 
+  let a = await srs.getAnswer()
+
   console.log(q)
   console.log(srs.current_link)
+  console.log("TO", a.language, a.medium)
 
 	await prompt("Press any key to see the answer") 
-
-  let a = await srs.getAnswer()
 
   console.log(a)
 
