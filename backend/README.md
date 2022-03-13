@@ -8,10 +8,13 @@ Try the CLI!
 ENV=DEV ./scripts/admin-user stephen
 
 TODO:
-* LIB: Persist SRS data in neo4j (current_question, current_answer)
 * LIB: What is necessary to make this useable for myself? 
 * CLI: Show srs status during study (how many tries left? due date?).  Etc.
 * CLI: Functions for managing srs 
+  - Remove
+  - Update
+  - Migration: Make srss have a link_reason regex too.  "translates to", "sounds like", "looks like", etc...
+* CLI: Basic CRUD abstraction (srss, memories...)
 
 
 

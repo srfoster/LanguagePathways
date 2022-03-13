@@ -24,19 +24,36 @@ async function repl(cmds){
   while(true){
     //Read
     const cmd_parts = (await prompt(username+"> ")).split(" ")
-    //Eval
-    const func = cmds[cmd_parts[0]]
 
     //Eval
-    cmd_parts.shift() 
-    let result = await func(cmd_parts)
-    //Print
-    console.log(result)
+    let func;
+    try{
+      func = cmds[cmd_parts[0]]
+      cmd_parts.shift() 
+      let result = await func(cmd_parts)
+      //Print
+      console.log(result)
+    }catch(e){
+      //Print
+      console.log(e)
+    }
+
+
   }
 }
 
 function help(cmd_parts){
   return Object.keys(cmds).join(" ") 
+}
+
+async function srss(cmd_parts){
+  //List srss
+  if(cmd_parts.length == 0)
+    return user.getSRSs()
+
+  let id = Number(cmd_parts.pop())
+  let s = await SRS.findById(id)
+  return await s.getCards()
 }
 
 function memories(cmd_parts){
@@ -69,7 +86,7 @@ function memories(cmd_parts){
     link: async (cmd_parts)=>{
       let id1 = Number(cmd_parts[0])
       let id2 = Number(cmd_parts[1])
-      let props = JSON.parse("{"+(cmd_parts[2]||"")+"}")
+      let props = JSON.parse((cmd_parts.slice(2).join(" ")||"{}"))
 
       let m1 = await Memory.findById(id1)
       let m2 = await Memory.findById(id2)
@@ -79,7 +96,13 @@ function memories(cmd_parts){
       console.log(m1,m2)
 
       return "Link established!"
-    }
+    },
+    show: async (cmd_parts)=>{
+      let id = Number(cmd_parts.pop())
+      let m = await Memory.findById(id)
+      console.log("OUT:", await m.outgoingMemories())
+      console.log("IN:",  await m.incomingMemories())
+    },
   }
 
   const func = cmds[cmd_parts[0]]
@@ -100,6 +123,7 @@ async function study(cmd_parts){
   }
 
   console.log(q)
+  console.log(srs.current_link)
 
 	await prompt("Press any key to see the answer") 
 
@@ -122,7 +146,7 @@ async function study(cmd_parts){
 
 //Top level commands
 let cmds = {
-  help, memories, study
+  help, memories, study, srss
 }
 
 module.exports = {

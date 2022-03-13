@@ -63,6 +63,15 @@ async function resolve1(s,d){
 }
 
 
+async function resolvePath(s,d){
+  let x = await runQuery(s,d)
+	let path = x.records[0].get(0)[0]
+
+  return [wrap(path.start),
+          wrap(path.segments[0].relationship),
+          wrap(path.end)]
+}
+
 let bindings;
 function binds(the_bindings){
   bindings = the_bindings
@@ -119,8 +128,10 @@ function createNode(type_name, props){
 
 module.exports = {
   binds,
+  wrap,
   resolveMany,
   resolve1,
+  resolvePath,
   runQuery,
   getNode,
   Node,
