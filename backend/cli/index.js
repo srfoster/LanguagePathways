@@ -40,8 +40,14 @@ let srss = async (cmd_parts)=>{
   let cmds = {
     new: crud.new(SRS, ["question_language","question_medium", "answer_language", "answer_medium", "transition_reason"], (props)=>user.createOrFindSRS(props)),
     rm: crud.rm(SRS),
-    show: crud.show(SRS, (s)=>{
-      return s.getCards()
+    show: crud.show(SRS, async (s)=>{
+      return (await s.getCards()).map((triplet)=>{
+       return {
+         from: triplet[0].data,
+         to: triplet[2].data,
+         meta: triplet[1]
+       }
+      })
     })
   }
 

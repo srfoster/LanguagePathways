@@ -8,7 +8,6 @@ Try the CLI!
 ENV=DEV ./scripts/admin-user stephen
 
 TODO:
-* CLI: Show srs status during study (how many tries left? due date?).  Etc.  Improve showing [:SRS] when showing srs
 * CLI: Crud
   - Update
 * Migration: Make srss have a link_reason regex too.  "translates to", "sounds like", "looks like", etc...

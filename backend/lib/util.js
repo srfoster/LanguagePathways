@@ -72,6 +72,16 @@ async function resolvePath(s,d){
           wrap(path.end)]
 }
 
+async function resolvePathMany(s,d){
+  let x = await runQuery(s,d)
+	return x.records.map((r)=>{
+     let p = r.get(0)[0]
+     return [wrap(p.start),
+		         wrap(p.segments[0].relationship),
+		         wrap(p.end)]
+ })
+}
+
 let bindings;
 function binds(the_bindings){
   bindings = the_bindings
@@ -132,6 +142,7 @@ module.exports = {
   resolveMany,
   resolve1,
   resolvePath,
+  resolvePathMany,
   runQuery,
   getNode,
   Node,
