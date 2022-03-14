@@ -37,7 +37,7 @@ class SRS extends Node{
 
   //Looking pretty similar to the above function.  Refactor?
   async getNextStudiedQuestion(){
-    let m_l_m2 = await resolvePath("MATCH (u:User)-[:Has]->(m:Memory)-[l:Link]->(m2:Memory), (m)-[s:SRSLink]->(m2) WHERE (s.times_right_in_a_row <= 3 OR localdatetime() > s.last_correct_at + duration({days: 2^(s.times_right_in_a_row-3)})) AND id(u)=$uId AND m.language =~ $mLanguage AND m.medium =~ $mMedium AND m2.language =~ $m2Language AND m2.medium =~ $m2Medium AND l.reason =~ $lReason AND (u)-[:Has]->(m2) RETURN (m)-[:Link]->(m2) ORDER BY rand() LIMIT 1", {uId: this.user_id, mLanguage: this.question_language, mMedium: this.question_medium, m2Language: this.answer_language, m2Medium: this.answer_medium, lReason: this.link_reason })
+    let m_l_m2 = await resolvePath("MATCH (u:User)-[:Has]->(m:Memory)-[l:Link]->(m2:Memory), (m)-[s:SRSLink]->(m2) WHERE (s.times_right <= 3 OR localdatetime() > s.last_correct_at + duration({days: 2^(s.times_right_in_a_row-4)})) AND id(u)=$uId AND m.language =~ $mLanguage AND m.medium =~ $mMedium AND m2.language =~ $m2Language AND m2.medium =~ $m2Medium AND l.reason =~ $lReason AND (u)-[:Has]->(m2) RETURN (m)-[:Link]->(m2) ORDER BY rand() LIMIT 1", {uId: this.user_id, mLanguage: this.question_language, mMedium: this.question_medium, m2Language: this.answer_language, m2Medium: this.answer_medium, lReason: this.link_reason })
 
     if(!m_l_m2) return null
 

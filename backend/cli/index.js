@@ -45,10 +45,19 @@ let srss = async (cmd_parts)=>{
     }),
     show: crud.show(SRS, async (s)=>{
       return (await s.getCards()).map((triplet)=>{
+       var formatDistanceToNow = require('date-fns/formatDistanceToNow')
+
+			 var addDays        = require('date-fns/addDays')
+
+			 let triar =  triplet[1].times_right_in_a_row 
+       let days = (Math.pow(2,triar - 4))
+       let dueDate = addDays(triplet[1].last_correct_at, days)
+
        return {
          from: triplet[0].data,
          to: triplet[2].data,
-         meta: triplet[1]
+         //streak: triplet[1].times_right_in_a_row,
+         due: triplet[1].times_right <= 3 ? ("Now (" + triar + " of 3)") : formatDistanceToNow(dueDate) + " from now"
        }
       })
     })
