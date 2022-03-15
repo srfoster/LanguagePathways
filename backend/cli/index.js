@@ -47,17 +47,13 @@ let srss = async (cmd_parts)=>{
       return (await s.getCards()).map((triplet)=>{
        var formatDistanceToNow = require('date-fns/formatDistanceToNow')
 
-			 var addDays        = require('date-fns/addDays')
-
-			 let triar =  triplet[1].times_right_in_a_row 
-       let days = (Math.pow(2,triar - 4))
-       let dueDate = addDays(triplet[1].last_correct_at, days)
+			 let dueDate = triplet[1].getDueDate()
 
        return {
          from: triplet[0].data,
          to: triplet[2].data,
          //streak: triplet[1].times_right_in_a_row,
-         due: triplet[1].times_right <= 3 ? ("Now (" + triar + " of 3)") : formatDistanceToNow(dueDate) + " from now"
+         due: formatDistanceToNow(dueDate) + " from now"
        }
       })
     })
@@ -109,6 +105,7 @@ async function study(cmd_parts){
   let q = await srs.getNextUnstudiedQuestion()
 
   if(!q){
+    console.log("No new cards to create...")
     q = await srs.getNextStudiedQuestion()
   }
 
