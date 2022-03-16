@@ -1,5 +1,6 @@
 let {User, Memory, SRS} = require("../lib/lib.js")
-let {crud, prompt} = require("./cli-util.js")
+let {crud, prompt, parse} = require("./cli-util.js")
+
 let username = process.env.CURRENT_USER
 let user     
 
@@ -66,7 +67,7 @@ let srss = async (cmd_parts)=>{
 
 let memories = async(cmd_parts)=>{
   if(cmd_parts.length == 0)
-    return user.getMemories()
+    return (await user.getMemories()).map((m)=>`  ${m.id} ${m.data}`).join("\n")
 
   let cmds = {
     new: crud.new(Memory, ["data", "language", "medium"], (props)=>user.createOrFindMemory(props)),
@@ -82,7 +83,7 @@ let memories = async(cmd_parts)=>{
     link: async (cmd_parts)=>{
       let id1 = Number(cmd_parts[0])
       let id2 = Number(cmd_parts[1])
-      let props = JSON.parse((cmd_parts.slice(2).join(" ")||"{}"))
+      let props = parse.kvs(cmd_parts.slice(2).join(" "))
 
       let m1 = await Memory.findById(id1)
       let m2 = await Memory.findById(id2)
@@ -135,11 +136,34 @@ async function study(cmd_parts){
   return "TODO" 
 }
 
+async function js(cmd_parts){
+  return eval(cmd_parts.join(" "))
+}
+
 
 //Top level commands
 let cmds = {
-  help, memories, study, srss
+  help, memories, study, srss, js
 }
+
+//Plus any plugins...
+
+let PLUGIN_DIR = process.env.PLUGIN_DIR
+//read files in plugins directory and call plugin on each path..
+
+async function plugin(file){
+  if(!file.endsWith(".js")) return
+
+  let newCmdF = require(PLUGIN_DIR+"/"+file).main
+
+  cmds[file.replace(".js","")] = newCmdF
+}
+
+var fs = require('fs');
+var files = fs.readdirSync(PLUGIN_DIR);
+
+files.map(plugin)
+
 
 module.exports = {
   adminUser

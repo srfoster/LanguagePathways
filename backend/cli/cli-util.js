@@ -62,7 +62,20 @@ let crud = {
 
 }
 
+let parse = {
+  kvs: (str) =>{
+    //str might be the bit at the end of a cmd like:
+    //  memories link 20 21 reason: "comments on", meta: true
+
+		let toEval = `temp = {${str}}`
+		let evaled = eval(toEval)
+
+    return evaled
+  }
+}
+
 module.exports = {
   crud,
-  prompt
+  prompt,
+  parse
 }

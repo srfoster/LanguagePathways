@@ -33,7 +33,6 @@ class SRS extends Node{
   async getNextUnstudiedQuestion(){
     let m_l_m2 = await resolvePath("MATCH (u:User)-[:Has]->(m:Memory)-[l:Link]->(m2:Memory) WHERE (NOT (m)-[:SRSLink]->(m2)) AND id(u)=$uId AND m.language =~ $mLanguage AND m.medium =~ $mMedium AND m2.language =~ $m2Language AND m2.medium =~ $m2Medium AND l.reason =~ $lReason AND (u)-[:Has]->(m2) RETURN (m)-[:Link]->(m2) ORDER BY rand() LIMIT 1", {uId: this.user_id, mLanguage: this.question_language, mMedium: this.question_medium, m2Language: this.answer_language, m2Medium: this.answer_medium, lReason: this.link_reason })
 
-    console.log(m_l_m2)
     if(!m_l_m2) return null
 
     await runQuery("MATCH (s:SRS)-[c:CurrentQuestion]->() DELETE c",{sId: this.id})

@@ -8,14 +8,16 @@ Try the CLI!
 ENV=DEV ./scripts/admin-user stephen
 
 TODO:
-* USE: Add some actual memories that I care about
-    > ??? 
+* USE: Study new memories.
+  
+* Add next chess memory 
 
 * USE: Make more srss, one for each zhong of card.  Make study take an srss id.  Control the type of study being done.  SRSs should have a name prop
 * USE: Decide how to represent chess tempo problems and/or positions from my own games.  Fen is nice.  A link back would be nice too though.
 * USE: Start learning River Flows In You 
 * CRUD: Pagination
 * SRS: Make sure marking incorrect does something
+* CLI: Make it easier to pass props to links and memories, formal json sucks
 
 
 Milestones:
