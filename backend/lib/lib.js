@@ -32,11 +32,13 @@ class SRSLink extends Edge{
 class SRS extends Node{
   constructor(id,props){
     super(id,props) 
+
+    this.props = this.props ? JSON.parse(this.props) : {}
   }
 
 
   async getNextUnstudiedQuestion(){
-    let m_l_m2 = await resolvePath("MATCH (u:User)-[:Has]->(m:Memory)-[l:Link]->(m2:Memory) WHERE (NOT (m)-[:SRSLink]->(m2)) AND id(u)=$uId AND m.language =~ $mLanguage AND m.medium =~ $mMedium AND m2.language =~ $m2Language AND m2.medium =~ $m2Medium AND l.reason =~ $lReason AND (u)-[:Has]->(m2) RETURN (m)-[:Link]->(m2) ORDER BY rand() LIMIT 1", {uId: this.user_id, mLanguage: this.question_language, mMedium: this.question_medium, m2Language: this.answer_language, m2Medium: this.answer_medium, lReason: this.link_reason })
+    let m_l_m2 = await resolvePath("MATCH (u:User)-[:Has]->(m1:Memory)-[l:Link]->(m2:Memory) WHERE (NOT (m1)-[:SRSLink]->(m2)) AND id(u)=$uId AND "+this.where+" AND (u)-[:Has]->(m2) RETURN (m1)-[:Link]->(m2) ORDER BY rand() LIMIT 1", {uId: this.user_id, ... this.props})
 
     if(!m_l_m2) return null
 
@@ -55,7 +57,7 @@ class SRS extends Node{
 
   //Looking pretty similar to the above function.  Refactor?
   async getNextStudiedQuestion(){
-    let m_l_m2 = await resolvePath("MATCH (u:User)-[:Has]->(m:Memory)-[l:Link]->(m2:Memory), (m)-[s:SRSLink]->(m2) WHERE (localdatetime() > s.last_correct_at + duration({days: 2^s.times_right_in_a_row - 1})) AND id(u)=$uId AND m.language =~ $mLanguage AND m.medium =~ $mMedium AND m2.language =~ $m2Language AND m2.medium =~ $m2Medium AND l.reason =~ $lReason AND (u)-[:Has]->(m2) RETURN (m)-[:Link]->(m2) ORDER BY rand() LIMIT 1", {uId: this.user_id, mLanguage: this.question_language, mMedium: this.question_medium, m2Language: this.answer_language, m2Medium: this.answer_medium, lReason: this.link_reason })
+    let m_l_m2 = await resolvePath("MATCH (u:User)-[:Has]->(m1:Memory)-[l:Link]->(m2:Memory), (m1)-[s:SRSLink]->(m2) WHERE (localdatetime() > s.last_correct_at + duration({days: 2^s.times_right_in_a_row - 1})) AND id(u)=$uId AND " +this.where+ " AND (u)-[:Has]->(m2) RETURN (m1)-[:Link]->(m2) ORDER BY rand() LIMIT 1", {uId: this.user_id, ... this.props}) 
 
     if(!m_l_m2) return null
 
@@ -144,8 +146,9 @@ class User extends Node{
     return ms
   }
 
-  async createOrFindSRS(props){
-    let s = await SRS.createOrFind({question_language:".*",question_medium: ".*", answer_language: ".*", answer_medium: ".*", ...props}) 
+  async createOrFindSRS(where,props){
+    //let s = await SRS.createOrFind({question_language:".*",question_medium: ".*", answer_language: ".*", answer_medium: ".*", ...props}) 
+    let s = await SRS.createOrFind({where:where, props: JSON.stringify({question_language:".*",question_medium: ".*", answer_language: ".*", answer_medium: ".*", link_reason: "translates to", ...props})})
 
     let h = await runQuery("MATCH (s:SRS),(u:User) WHERE id(u)=$id AND id(s)=$sId MERGE (u)-[h:Has {creator: true}]->(s) RETURN h", {id: this.id, sId: s.id})
 

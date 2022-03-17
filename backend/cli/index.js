@@ -45,22 +45,14 @@ let srss = async (cmd_parts)=>{
       return s
     }),
     show: crud.show(SRS, async (s)=>{
-      console.log("Showing 10. TODO: Implement pagination")
-      return (await s.getCards()).slice(10).map((triplet)=>{
-       var formatDistanceToNow = require('date-fns/formatDistanceToNow')
+      await crud.paginate(()=>s.getCards(), 
+        (triplet)=>{
+           var formatDistanceToNow = require('date-fns/formatDistanceToNow')
 
-			 let dueDate = triplet[1].getDueDate()
+			     let dueDate = triplet[1].getDueDate()
 
-       return `${triplet[1].isDue() ? "DUE" : "zzz"} ${formatDistanceToNow(dueDate)} ${triplet[0].data} -> ${triplet[2].data}`
-       /*
-       return {
-         from: triplet[0].data,
-         to: triplet[2].data,
-         //streak: triplet[1].times_right_in_a_row,
-         due: formatDistanceToNow(dueDate) + " from now"
-       }
-       */
-      })
+           return `${triplet[1].isDue() ? "DUE" : "zzz"} ${formatDistanceToNow(dueDate)} ${triplet[0].data} -> ${triplet[2].data}`
+       })
     })
   }
 
@@ -106,7 +98,9 @@ let memories = async(cmd_parts)=>{
 }
 
 async function study(cmd_parts){
-  let srs = await user.createOrFindSRS({})
+  //TODO: Too specific for me/chinese.  Extract
+  let srs = await user.createOrFindSRS("m1.language =~ '.*' AND m1.medium =~ '.*' AND m2.language =~ '.*' AND (NOT m2.medium =~ 'text/hanyu')  AND m2.medium =~ $answer_medium AND l.reason = $link_reason", {})
+
   let q = await srs.getNextUnstudiedQuestion()
 
   if(!q){

@@ -12,6 +12,21 @@ function prompt(q){
 }
 
 let crud = {
+  paginate: async (generator, show)=>{
+    //Inefficient for now.
+
+    let things = await generator() //should pass in current page when we make getCards actually work 
+
+    while(things.length > 0){
+      console.log(things.slice(0,10).map(show).join("\n"))
+
+      let page = await prompt("Any key to continue") //Select page here?  Forward, backward?
+      
+      things = things.slice(10) 
+    }
+
+    return "That's all"
+  },
   show: (resource_class, afterFind)=> {
     return async (cmd_parts)=>{
 			let id = Number(cmd_parts.shift())

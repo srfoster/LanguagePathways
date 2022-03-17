@@ -1,5 +1,5 @@
-//let debug = true
-let debug = false
+let debug = true
+//let debug = false
 
 let env = require("../env.js")[process.env.ENV]
 

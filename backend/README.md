@@ -8,8 +8,14 @@ Try the CLI!
 ENV=DEV ./scripts/admin-user stephen
 
 TODO:
+
+ * URGENT: FIX Data is in a broken state.  SRSs are being created with an incorrect where clause.  Studied cards do not match with cards marked as due.  
+
+
 * USE: Be able to see how many cards are due vs not.  Basic stats.  
   TEST: Write some unit tests for due cards
+
+
 
 * USE: Study new memories.
   
@@ -17,12 +23,8 @@ TODO:
 
 * CRUD:BUG: Updating a memory adds an extra :Has, causing the memory to show up twice in a users list
 
-* USE: Make more srss, one for each zhong of card.  Make study take an srss id.  Control the type of study being done.  SRSs should have a name prop
+* USE: Filter out ANY->hanyu cards into another srs.  They are too hard for now and slowing things down? Maybe writing can come later.  Make study take an srss id.  Control the type of study being done.  SRSs should have a name prop
 * USE: Decide how to represent chess tempo problems and/or positions from my own games.  Fen is nice.  A link back would be nice too though.
-* USE: Start learning River Flows In You 
-* CRUD: Pagination
-* SRS: Make sure marking incorrect does something
-* CLI: Make it easier to pass props to links and memories, formal json sucks
 
 
 Milestones:
