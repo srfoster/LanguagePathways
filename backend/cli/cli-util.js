@@ -22,7 +22,7 @@ let crud = {
   update: (resource_class, afterFind)=> {
     return async (cmd_parts)=>{
 			let id = Number(cmd_parts.shift())
-      let props = JSON.parse((cmd_parts.join(" ")||"{}"))
+      let props = parse.kvs(cmd_parts.join(" "))
 
 			let s = await resource_class.findById(id)
       s = await s.update(props)
@@ -66,6 +66,8 @@ let parse = {
   kvs: (str) =>{
     //str might be the bit at the end of a cmd like:
     //  memories link 20 21 reason: "comments on", meta: true
+
+    if(str.join) str = str.join(" ")
 
 		let toEval = `temp = {${str}}`
 		let evaled = eval(toEval)

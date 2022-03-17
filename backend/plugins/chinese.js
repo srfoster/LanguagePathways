@@ -12,7 +12,9 @@ let main = async (cmd_parts) =>{
 
       console.log("Expanding",toExpand)
 
-      let {hanyu,pinyin} = parse.kvs(cmd_parts)
+      //let {hanyu,pinyin} = parse.kvs(cmd_parts)
+      let hanyu  = await prompt("  Hanyu: ")
+      let pinyin = await prompt("  Pinyin: ")
 
       console.log("Hanyu:",hanyu)  
       console.log("Pinyin:",pinyin)  

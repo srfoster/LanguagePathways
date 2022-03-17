@@ -45,17 +45,21 @@ let srss = async (cmd_parts)=>{
       return s
     }),
     show: crud.show(SRS, async (s)=>{
-      return (await s.getCards()).map((triplet)=>{
+      console.log("Showing 10. TODO: Implement pagination")
+      return (await s.getCards()).slice(10).map((triplet)=>{
        var formatDistanceToNow = require('date-fns/formatDistanceToNow')
 
 			 let dueDate = triplet[1].getDueDate()
 
+       return `${triplet[1].isDue() ? "DUE" : "zzz"} ${formatDistanceToNow(dueDate)} ${triplet[0].data} -> ${triplet[2].data}`
+       /*
        return {
          from: triplet[0].data,
          to: triplet[2].data,
          //streak: triplet[1].times_right_in_a_row,
          due: formatDistanceToNow(dueDate) + " from now"
        }
+       */
       })
     })
   }

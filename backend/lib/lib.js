@@ -17,10 +17,15 @@ class SRSLink extends Edge{
 
 	getDueDate(){
 		var addDays        = require('date-fns/addDays')
-		let days    = Math.pow(2,this.times_right_in_a_row)
+		let days    = Math.pow(2,this.times_right_in_a_row) - 1
 		let dueDate = addDays(this.last_correct_at, days)
 
 		return dueDate
+	}
+
+	isDue(){
+		var isFuture        = require('date-fns/isFuture')
+		return !isFuture(this.getDueDate())
 	}
 }
 
@@ -50,7 +55,7 @@ class SRS extends Node{
 
   //Looking pretty similar to the above function.  Refactor?
   async getNextStudiedQuestion(){
-    let m_l_m2 = await resolvePath("MATCH (u:User)-[:Has]->(m:Memory)-[l:Link]->(m2:Memory), (m)-[s:SRSLink]->(m2) WHERE (localdatetime() > s.last_correct_at + duration({days: 2^s.times_right_in_a_row})) AND id(u)=$uId AND m.language =~ $mLanguage AND m.medium =~ $mMedium AND m2.language =~ $m2Language AND m2.medium =~ $m2Medium AND l.reason =~ $lReason AND (u)-[:Has]->(m2) RETURN (m)-[:Link]->(m2) ORDER BY rand() LIMIT 1", {uId: this.user_id, mLanguage: this.question_language, mMedium: this.question_medium, m2Language: this.answer_language, m2Medium: this.answer_medium, lReason: this.link_reason })
+    let m_l_m2 = await resolvePath("MATCH (u:User)-[:Has]->(m:Memory)-[l:Link]->(m2:Memory), (m)-[s:SRSLink]->(m2) WHERE (localdatetime() > s.last_correct_at + duration({days: 2^s.times_right_in_a_row - 1})) AND id(u)=$uId AND m.language =~ $mLanguage AND m.medium =~ $mMedium AND m2.language =~ $m2Language AND m2.medium =~ $m2Medium AND l.reason =~ $lReason AND (u)-[:Has]->(m2) RETURN (m)-[:Link]->(m2) ORDER BY rand() LIMIT 1", {uId: this.user_id, mLanguage: this.question_language, mMedium: this.question_medium, m2Language: this.answer_language, m2Medium: this.answer_medium, lReason: this.link_reason })
 
     if(!m_l_m2) return null
 
@@ -87,7 +92,10 @@ class SRS extends Node{
   }
 
   async markIncorrect(){
-    //Update any SRS-related edges...
+    let a = await this.getAnswer()
+    let q = await this.getQuestion()
+
+    await runQuery("MATCH (m1:Memory),(m2:Memory) WHERE id(m1)=$m1Id AND id(m2)=$m2Id MERGE (m1)-[s:SRSLink]->(m2) ON CREATE SET s = {srs_id: $sId, last_correct_at: localdatetime(), times_right: 0, times_wrong: 1, times_right_in_a_row: 0} ON MATCH SET s += { times_wrong: s.times_wrong+1, times_right_in_a_row: 0}", {uId: this.user_id, m1Id: q.id, m2Id: a.id, sId: this.id })
   }
 
   async getCards(){
