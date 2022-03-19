@@ -8,10 +8,8 @@ Try the CLI!
 PLUGIN_DIR=`pwd`/plugins/ ENV=DEV ./scripts/admin-user stephen
 
 TODO:
-
 * USE: Be able to back up database.  There are enough cards now to be paranoid about losing things! 
 
-* CLI: Check that card due dates are being displayed correctly, past and future
 * CLI: yes/no/cancel abstraction with support for non-recognized responses
 * CLI: Be able to see how many cards are due vs not.  Basic stats.  
 

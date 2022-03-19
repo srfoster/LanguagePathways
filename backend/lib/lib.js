@@ -11,7 +11,8 @@ class SRSLink extends Edge{
     //TODO: Feels like this should be done based on some schema...
     this.times_right = this.times_right.toNumber()
     this.times_wrong = this.times_wrong.toNumber()
-    this.last_correct_at = new Date(this.last_correct_at)
+    this.last_correct_at_orig = this.last_correct_at
+    this.last_correct_at = new Date(this.last_correct_at.toString()+"z") //z keeps it from doing a weird tz conversion...
     this.times_right_in_a_row = this.times_right_in_a_row.toNumber()
   }
 
