@@ -51,7 +51,7 @@ let srss = async (cmd_parts)=>{
 
 			     let dueDate = triplet[1].getDueDate()
 
-           return `${triplet[1].isDue() ? "DUE" : "zzz"} ${formatDistanceToNow(dueDate)} ${triplet[0].data} -> ${triplet[2].data}`
+           return `${triplet[1].isDue() ? "-" : "+"} ${formatDistanceToNow(dueDate)} ${triplet[0].data} -> ${triplet[2].data}`
        })
     })
   }
@@ -63,7 +63,7 @@ let srss = async (cmd_parts)=>{
 
 let memories = async(cmd_parts)=>{
   if(cmd_parts.length == 0)
-    return (await user.getMemories()).map((m)=>`  ${m.id} ${m.data}`).join("\n")
+    return await crud.paginate(()=>user.getMemories(), (m)=>{ return `  ${m.id} ${m.data}` })
 
   let cmds = {
     new: crud.new(Memory, ["data", "language", "medium"], (props)=>user.createOrFindMemory(props)),
@@ -100,6 +100,8 @@ let memories = async(cmd_parts)=>{
 async function study(cmd_parts){
   //TODO: Too specific for me/chinese.  Extract
   let srs = await user.createOrFindSRS("m1.language =~ '.*' AND m1.medium =~ '.*' AND m2.language =~ '.*' AND (NOT m2.medium =~ 'text/hanyu')  AND m2.medium =~ $answer_medium AND l.reason = $link_reason", {})
+
+  console.log("SRS", srs)
 
   let q = await srs.getNextUnstudiedQuestion()
 
@@ -147,20 +149,22 @@ let cmds = {
 //Plus any plugins...
 
 let PLUGIN_DIR = process.env.PLUGIN_DIR
-//read files in plugins directory and call plugin on each path..
+if(PLUGIN_DIR){
+	//read files in plugins directory and call plugin on each path..
 
-async function plugin(file){
-  if(!file.endsWith(".js")) return
+	async function plugin(file){
+		if(!file.endsWith(".js")) return
 
-  let newCmdF = require(PLUGIN_DIR+"/"+file).main
+			let newCmdF = require(PLUGIN_DIR+"/"+file).main
 
-  cmds[file.replace(".js","")] = newCmdF
+				cmds[file.replace(".js","")] = newCmdF
+	}
+
+	var fs = require('fs');
+	var files = fs.readdirSync(PLUGIN_DIR);
+
+	files.map(plugin)
 }
-
-var fs = require('fs');
-var files = fs.readdirSync(PLUGIN_DIR);
-
-files.map(plugin)
 
 
 module.exports = {
