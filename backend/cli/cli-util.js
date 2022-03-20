@@ -20,7 +20,7 @@ let crud = {
     while(things.length > 0){
       console.log(things.slice(0,10).map(show).join("\n"))
 
-      let page = await prompt("Any key to continue") //Select page here?  Forward, backward?
+      let page = await prompt("Any key to continue\n") //Select page here?  Forward, backward?
       
       things = things.slice(10) 
     }

@@ -45,7 +45,14 @@ let srss = async (cmd_parts)=>{
       return s
     }),
     show: crud.show(SRS, async (s)=>{
-      await crud.paginate(()=>s.getCards(), 
+      //TODO: Will get less efficient the more mems we have,
+      //      Need to accomplish this without loading whole dataset into memory.
+			let all = await s.getCards()
+      all = all.sort((a,b)=>a[1].getDueDate()-b[1].getDueDate())
+      console.log("Total cards:", all.length)
+      console.log("Due:", all.filter((triplet)=>triplet[1].isDue()).length)
+
+      await crud.paginate(()=>all, 
         (triplet)=>{
            var formatDistanceToNow = require('date-fns/formatDistanceToNow')
 
@@ -66,6 +73,15 @@ let memories = async(cmd_parts)=>{
     return await crud.paginate(()=>user.getMemories(), (m)=>{ return `  ${m.id} ${m.data}` })
 
   let cmds = {
+    stats: async (cmd_parts)=>{ 
+      //TODO: Will get less efficient the more mems we have,
+      //      Need to accomplish this without loading whole dataset into memory.
+      let all = await user.getMemories()
+
+      let count = all.length
+
+      console.log(count) 
+    },
     new: crud.new(Memory, ["data", "language", "medium"], (props)=>user.createOrFindMemory(props)),
     rm: crud.rm(Memory),
     update: crud.update(Memory, (m)=>{
@@ -101,7 +117,7 @@ async function study(cmd_parts){
   //TODO: Too specific for me/chinese.  Extract
   let srs = await user.createOrFindSRS("m1.language =~ '.*' AND m1.medium =~ '.*' AND m2.language =~ '.*' AND (NOT m2.medium =~ 'text/hanyu')  AND m2.medium =~ $answer_medium AND l.reason = $link_reason", {})
 
-  console.log("SRS", srs)
+  //console.log("SRS", srs)
 
   let q = await srs.getNextUnstudiedQuestion()
 
