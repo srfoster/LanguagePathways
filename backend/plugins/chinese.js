@@ -1,3 +1,4 @@
+let {Node,Edge,resolve1,resolveMany,resolvePath,resolvePathMany,runQuery, binds} = require("../lib/util.js")
 let {User, Memory, SRS} = require("../lib/lib.js")
 let {crud, prompt, parse} = require("../cli/cli-util.js")
 
@@ -5,6 +6,13 @@ let main = async (cmd_parts) =>{
   user = await User.createOrFind({username: process.env.CURRENT_USER})
 
   let cmds = {
+    stats:  async (cmd_parts)=>{ 
+      let hanyus = await resolveMany("MATCH (m:Memory) WHERE m.medium = 'text/hanyu' RETURN m") 
+      console.log("Chinese sentences", hanyus.length)
+      let fullCorpus = hanyus.map((h)=>h.data).join("")
+      let uniqueChars = [...new Set(fullCorpus.split(""))]
+      console.log("Chinese characters", uniqueChars.length)
+    },
     new: async (cmd_parts)=>{
       let english = await prompt("English: ")
 
